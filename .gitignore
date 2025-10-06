@@ -1,0 +1,3 @@
+/ecommerce-platform/.venv
+**/__pycache__
+**/migrations
