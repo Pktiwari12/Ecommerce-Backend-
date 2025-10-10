@@ -5,6 +5,7 @@
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
+from .serializers import VendorRegistrationSerializer
 # Create your views here.
 
 # manually serialization 
@@ -30,3 +31,30 @@ from rest_framework.decorators import api_view
 #         vendors = Customer.objects.all()
 #         serializer = CustomerSerializer(vendors,many=True)
 #         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+
+
+@api_view(['POST'])
+def register_vendor(request):
+    """
+    Vendor registration view (Function-based)
+    """
+
+    serializer = VendorRegistrationSerializer(data=request.data)
+
+    if serializer.is_valid():
+        vendor = serializer.save()
+        return Response({
+            "message": "Vendor registered successfully.",
+            "vendor": {
+                "email": vendor.owner.email,
+                "full_name": vendor.owner.first_name,
+                "seller_name": vendor.seller_name,
+                "status": vendor.status
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
