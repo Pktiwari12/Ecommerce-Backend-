@@ -38,7 +38,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, null=False)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES,default='customer')
     username = None
-
+    is_verified = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     objects = CustomUserManager()
@@ -48,10 +48,10 @@ class User(AbstractUser):
 
 
 # model for email verification
+
 class EmailOtp(models.Model):
     email = models.EmailField(unique=True,null=False)
     otp = models.CharField(max_length=6)
-    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     #otp vaild upto 5 min
