@@ -74,7 +74,7 @@ class ResendOtpSerializer(serializers.Serializer):
         
         return user,otp
         
-
+# this does not work proper. because model's field changed.
 class EmailVerifySerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
@@ -90,22 +90,24 @@ class EmailVerifySerializer(serializers.Serializer):
     #     return value
     def validate(self, data):
         try:
-            record = EmailOtp.objects.get(email=data['email'])
+            user = User.objects.get(email=data['email'])
+            emailotp =EmailOtp.objects.get(user=user)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Email does not exist.")
         except EmailOtp.DoesNotExist:
             raise serializers.ValidationError("Email does not exist to verify.")
         
-        if record.isExpire():
-            record.delete()
-            raise serializers.ValidationError("OTP is Expired. Please Enter Email Again.")
-        if record.otp != data['otp']:
+        if emailotp.isExpire():
+            raise serializers.ValidationError("OTP is Expired. Please use resend otp api.")
+        if emailotp.otp != data['otp']:
             raise serializers.ValidationError("Please Enter a Valid OTP.")
         return data
         
     def create(self, validated_data):
-        record = EmailOtp.objects.get(email=validated_data['email'])
-        record.is_verified = True
-        record.save()
-        return record
+        user = User.objects.get(email=validated_data['email'])
+        user.is_verified = True
+        user.save()
+        return user
 
 
         

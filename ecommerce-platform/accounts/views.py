@@ -61,6 +61,7 @@ def resend_otp(request):
         "error": serializer.errors()
     },status=status.HTTP_400_BAD_REQUEST)
 
+# this does not work proper. because model's field changed.
 @api_view(['POST'])
 def email_verify(request):
     serializer = EmailVerifySerializer(data=request.data)

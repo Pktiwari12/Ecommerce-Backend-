@@ -53,11 +53,11 @@ class EmailOtp(models.Model):
     # email = models.EmailField(unique=True,null=False)
     user = models.OneToOneField(User,on_delete=models.CASCADE,primary_key=True)
     otp = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-
+    # created_at = models.DateTimeField(auto_now_add=True)
+    otp_updated = models.DateTimeField(auto_now=True)
     #otp vaild upto 5 min
     def isExpire(self):
-        return timezone.now() > self.created_at + timezone.timedelta(minutes=5)
+        return timezone.now() > self.otp_updated + timezone.timedelta(minutes=5)
     
     def __str__(self):
         return f"{self.email} :  {self.otp}"
