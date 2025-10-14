@@ -50,7 +50,8 @@ class User(AbstractUser):
 # model for email verification
 
 class EmailOtp(models.Model):
-    email = models.EmailField(unique=True,null=False)
+    # email = models.EmailField(unique=True,null=False)
+    user = models.OneToOneField(User,on_delete=models.CASCADE,primary_key=True)
     otp = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -59,5 +60,5 @@ class EmailOtp(models.Model):
         return timezone.now() > self.created_at + timezone.timedelta(minutes=5)
     
     def __str__(self):
-        return f"{self.email} verification status = {self.is_verified}"
+        return f"{self.email} :  {self.otp}"
 

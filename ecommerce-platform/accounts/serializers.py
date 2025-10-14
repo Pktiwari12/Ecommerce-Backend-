@@ -36,9 +36,6 @@ class EmailOtpRequestSerializer(serializers.Serializer):
         except Exception as e:
             raise serializers.ValidationError("Unable to send mail. Please try again later")
         
-        # model instance created
-        email_otp = EmailOtp.objects.update_or_create(email=validated_data['email'],
-                                            defaults={"otp": otp})
         user_data = {
             "email": validated_data['email'],
             "first_name": validated_data['f_name'],
@@ -47,14 +44,14 @@ class EmailOtpRequestSerializer(serializers.Serializer):
         }
         user = User.objects.create(**user_data)
         user.set_password(validated_data['confirm_password'])
-        user.save()
-        return user
+        return user,otp
 
 class ResendOtpSerializer(serializers.Serializer):
     email = serializers.EmailField()
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email is not registered.")
+        return value
     
     def create(self, validated_data):
         email = validated_data['email']
@@ -70,10 +67,12 @@ class ResendOtpSerializer(serializers.Serializer):
             )
         except Exception as e:
             raise serializers.ValidationError("Unable to send mail. Please try again later")
+        try:
+            user = User.objects.get(email=validated_data['email'])
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Email does not exist.")
         
-        email_otp = EmailOtp.objects.update_or_create(email=validated_data['email'],
-                                            defaults={"otp": otp})
-        return email_otp
+        return user,otp
         
 
 class EmailVerifySerializer(serializers.Serializer):
