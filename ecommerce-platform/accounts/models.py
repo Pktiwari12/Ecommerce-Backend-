@@ -56,9 +56,9 @@ class EmailOtp(models.Model):
     # created_at = models.DateTimeField(auto_now_add=True)
     otp_updated = models.DateTimeField(auto_now=True)
     #otp vaild upto 5 min
-    def isExpire(self):
-        return timezone.now() > self.otp_updated + timezone.timedelta(minutes=5)
+    def isExpire(self,t):
+        return timezone.now() > self.otp_updated + timezone.timedelta(minutes=t)
     
     def __str__(self):
-        return f"{self.email} :  {self.otp}"
+        return f"{self.user} :  {self.otp}"
 

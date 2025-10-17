@@ -1,14 +1,16 @@
 # from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
-from .serializers import EmailOtpRequestSerializer,EmailVerifySerializer,ResendOtpSerializer
+from rest_framework.decorators import api_view,permission_classes
+from .serializers import RegisterSerializer,EmailVerifySerializer,RequestOtpSerializer,LoginSerializer,logoutSerializer,forgotPasswordSerializer
 from .models import EmailOtp
-
+# from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 @api_view(['POST'])
-def email_otp_request(request):
-    serializer = EmailOtpRequestSerializer(data=request.data)
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user,otp = serializer.save()  # triggers create or update method of serializer
         try:
@@ -38,8 +40,8 @@ def email_otp_request(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
-def resend_otp(request):
-    serializer = ResendOtpSerializer(data=request.data)
+def request_otp(request):
+    serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user,otp = serializer.save()
         try:
@@ -73,4 +75,45 @@ def email_verify(request):
      
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+@permission_classes([])
+def login_view(request):
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        return Response({
+            "message": "Logged in Successfully",
+            "data": serializer.validated_data
+        },status=status.HTTP_200_OK)
+    
+    return Response({
+        "message": "Invaild Data",
+        "errors": serializer.errors
+    },status=status.HTTP_400_BAD_REQUEST)
 
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    serializer = logoutSerializer(data=request.data, context={"request": request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response({
+            "message": "User logged out successfully",
+            "data": {
+                "id": request.user.id,
+                "first_name": request.user.first_name,
+                "last_name": request.user.last_name,
+                "email": request.user.email
+            }
+        },status= status.HTTP_205_RESET_CONTENT)
+    
+    return Response({
+        "errors": serializer.errors
+    },status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def forgot_password(request):
+    pass
