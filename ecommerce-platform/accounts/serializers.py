@@ -57,7 +57,7 @@ class RequestOtpSerializer(serializers.Serializer):
         return value
     
         
-    def save(self, validated_data):
+    def create(self, validated_data):
         email = validated_data['email']
         otp = str(random.randint(100000,999999))
         # send email 
@@ -73,8 +73,8 @@ class RequestOtpSerializer(serializers.Serializer):
             raise serializers.ValidationError("Unable to send mail. Please try again later")
         try:
             user = User.objects.get(email=validated_data['email'])
-            if user.is_verified:
-                user.is_verified = False
+            # if user.is_verified:
+            #     user.is_verified = False
         except User.DoesNotExist:
             raise serializers.ValidationError("Email does not exist.")
         
@@ -97,12 +97,16 @@ class EmailVerifySerializer(serializers.Serializer):
     def validate(self, data):
         try:
             user = User.objects.get(email=data['email'])
+            self.user = user
             emailotp =EmailOtp.objects.get(user=user)
+            self.emailotp = emailotp
         except User.DoesNotExist:
             raise serializers.ValidationError("Email does not exist.")
         except EmailOtp.DoesNotExist:
             raise serializers.ValidationError("Email does not exist to verify.")
         
+        if emailotp.isused:
+            raise serializers.ValidationError("OTP is used before.")
         if emailotp.isExpire(5):
             raise serializers.ValidationError("OTP is Expired. Please use resend otp api.")
         if emailotp.otp != data['otp']:
@@ -110,10 +114,11 @@ class EmailVerifySerializer(serializers.Serializer):
         return data
         
     def create(self, validated_data):
-        user = User.objects.get(email=validated_data['email'])
-        user.is_verified = True
-        user.save()
-        return user
+        # user = User.objects.get(email=validated_data['email'])
+        self.user.is_verified = True
+        self.user.save()
+        self.emailotp.isUsed = True
+        return self.user
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -175,36 +180,46 @@ class logoutSerializer(serializers.Serializer):
 
 
 class forgotPasswordSerializer(serializers.Serializer):
-    pass
-    # email = serializers.EmailField()
-    # otp = serializers.CharField(max_length=6)
-    # password = serializers.CharField()
-    # confirm_password = serializers.CharField()
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+    password = serializers.CharField()
+    confirm_password = serializers.CharField()
 
-    # def validate(self,data):
-    #     if data['password'] != data['confirm_password']:
-    #         raise serializers.ValidationError("Password must match Confirm Password.")
-    #     try:
-    #         user = User.objects.get(email=data['email'])
-    #         self.user = user # strore class instace variable
-    #         if not user.is_verified:
-    #             raise serializers.ValidationError("Please verify email using otp.")
-    #         # enforced to verify using otp first
-    #         emailotp = EmailOtp(user=user)
-    #         if emailotp.isExpire(10):
-    #             raise serializers.ValidationError("Time Expired. First verify your email using otp.")
+    def validate(self,data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError("Password must match Confirm Password.")
+        try:
+            user = User.objects.get(email=data['email'])
+            self.user = user # strore class instace variable
+            if not user.is_verified:
+                raise serializers.ValidationError("Please verify email using otp.")
+            # enforced to verify using otp first
+            emailotp = EmailOtp.objects.get(user=user)
+            self.emailotp = emailotp
+            if emailotp.isExpire(10):
+                raise serializers.ValidationError("Time Expired. First verify your email using otp.")
             
-    #         if emailotp.otp != data['otp']:
-    #             raise serializers.ValidationError("Please Enter valid otp.")
+            if emailotp.otp != data['otp']:
+                raise serializers.ValidationError("Please Enter valid otp.")
+            
+            if emailotp.isUsed:
+                raise serializers.ValidationError("This otp is already used.")
 
-            
-    #     except User.DoesNotExist:
-    #         raise serializers.ValidationError("User does not exist.")
-    #     except EmailOtp.DoesNotExist:
-    #         raise serializers.ValidationError("otp instance is not found.")
-    #     return data
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User does not exist.")
+        except EmailOtp.DoesNotExist:
+            raise serializers.ValidationError("otp instance is not found.")
+        return data
     
-    # def save(self,data):
+    def save(self,**kwargs):
+        try:
+            self.user.set_password(self.validated_data['password'])
+            self.user.save()
+            self.emailotp.isUsed = True
+            self.emailotp.save()
+        except:
+            raise serializers.ValidationError("Unable to change the password")
+        return self.user
 
 
     

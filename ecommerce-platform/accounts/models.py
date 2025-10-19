@@ -53,6 +53,8 @@ class EmailOtp(models.Model):
     # email = models.EmailField(unique=True,null=False)
     user = models.OneToOneField(User,on_delete=models.CASCADE,primary_key=True)
     otp = models.CharField(max_length=6)
+    # used first time only
+    isUsed = models.BooleanField(default=False)
     # created_at = models.DateTimeField(auto_now_add=True)
     otp_updated = models.DateTimeField(auto_now=True)
     #otp vaild upto 5 min

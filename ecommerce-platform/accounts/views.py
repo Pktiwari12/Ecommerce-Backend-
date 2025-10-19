@@ -17,7 +17,8 @@ def register(request):
             
             user.save() # instance saved into db
             EmailOtp.objects.update_or_create(user=user,
-                                            defaults={"otp": otp})
+                                            defaults={"otp": otp,
+                                                      "isUsed": False})
         except Exception as e:
             return Response({
                 "error": "Unable to save otp , please try again later",
@@ -40,13 +41,15 @@ def register(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
+@permission_classes([])
 def request_otp(request):
-    serializer = RegisterSerializer(data=request.data)
+    serializer = RequestOtpSerializer(data=request.data)
     if serializer.is_valid():
         user,otp = serializer.save()
         try:
             email_otp = EmailOtp.objects.update_or_create(user=user,
-                                                          defaults={"otp": otp})
+                                                          defaults={"otp": otp,
+                                                                    "isUsed": False})
         except Exception as e:
             return Response({
                 "message": "OTP resend is unsuccessfull.",
@@ -60,7 +63,7 @@ def request_otp(request):
     
     return Response({
         "message": "Invaild Data",
-        "error": serializer.errors()
+        "error": serializer.errors
     },status=status.HTTP_400_BAD_REQUEST)
 
 # this does not work proper. because model's field changed.
@@ -114,6 +117,21 @@ def logout_view(request):
     
 
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
+@permission_classes([])
 def forgot_password(request):
-    pass
+    serializer = forgotPasswordSerializer(data=request.data)
+    if(serializer.is_valid()):
+        user = serializer.save()
+        return Response({
+            "message": "Password changed Successfully.",
+            "data": {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email
+            }
+        },status=status.HTTP_200_OK)
+    else:
+        return Response({
+            "error": serializer.errors,
+        },status=status.HTTP_400_BAD_REQUEST)

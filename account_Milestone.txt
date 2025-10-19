@@ -1,0 +1,24 @@
+1. Email Verification API with basic data:- Done
+2. SMS Verification API :- Pending Currently left
+3. Connect Both Verificatio To Asheesh's Frontened := Done by asheesh 
+4. Implement login and logout Using JWT :- Done 
+5. After login User can manage their profile
+6. Vendor Onboarding => Clarly find out requirements.
+7. If user registered succesfully without verify your otp, then user not need to be stored in DB. := will completed by celery for predictive scheduiling
+
+
+
+next :- 
+1.read the RefreashToken.blacklist() for logout. and check login and logged out api := done
+2. implement forget password route to change the password. := done
+
+
+Errors :- 
+1. in logout serializer , if check token.id != request[user].id , then throw error. 
+problem := this error raised every time when my access token and refresh token is correct.
+current action := for now, I removed this conditons, and simply blacklist the token.
+
+
+Note:- Some operations have to be performed in Cache. (like inital registration.). So use celery and 
+redis
+
