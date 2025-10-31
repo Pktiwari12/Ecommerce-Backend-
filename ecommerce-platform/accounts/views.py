@@ -9,6 +9,7 @@ from .models import EmailOtp
 from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 @api_view(['POST'])
+@permission_classes([])
 def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -68,6 +69,7 @@ def request_otp(request):
 
 # this does not work proper. because model's field changed.
 @api_view(['POST'])
+@permission_classes([])
 def email_verify(request):
     serializer = EmailVerifySerializer(data=request.data)
     if serializer.is_valid():

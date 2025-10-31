@@ -105,7 +105,7 @@ class EmailVerifySerializer(serializers.Serializer):
         except EmailOtp.DoesNotExist:
             raise serializers.ValidationError("Email does not exist to verify.")
         
-        if emailotp.isused:
+        if emailotp.isUsed:
             raise serializers.ValidationError("OTP is used before.")
         if emailotp.isExpire(5):
             raise serializers.ValidationError("OTP is Expired. Please use resend otp api.")
