@@ -178,3 +178,12 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # CORS Configuration
 CORS_ALLOW_ALL_ORIGINS = True # never use in production. This is development purpose only.
 # there is alternative option avaiable for production => https://www.stackhawk.com/blog/django-cors-guide/
+
+
+# Celery Configrutation
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Kolkata"

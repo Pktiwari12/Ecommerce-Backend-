@@ -3,9 +3,13 @@ from rest_framework.decorators import api_view,permission_classes
 from rest_framework import status
 from rest_framework.response import Response
 from .utils import find_leaf_nodes
-from .serializers import LeafCategorySerializer,CategoryAttributeValueSerializer
+from .serializers import (LeafCategorySerializer,CategoryAttributeValueSerializer,
+                          AddProductSerializer,
+                          )
 from .permissions import IsVendor
-from .models import Category,CategoryAttribute,Attribute,AttributeValue
+from .models import (Category,CategoryAttribute,Attribute,AttributeValue,
+                     Product,ProductVariant)
+from .tasks import delete_product_without_variants
 
 # Create your views here.
 
@@ -56,4 +60,37 @@ def category_attribute(request, category_id):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([IsVendor])
+def add_product(request):
+    serializer = AddProductSerializer(data=request.data)
+    if serializer.is_valid():
+        category = serializer.validated_data['category_id']
+        try:
+            product = Product.objects.create(
+                title=serializer.validated_data['title'],
+                description=serializer.validated_data['description'],
+                base_price=serializer.validated_data['base_price'],
+                # category=serializer.validated_data['category_id'], # this return object
+                vendor = request.user,
+                status="inactive"
+            )
+            product.category.add(category) # used in many to many reln
+            delete_product_without_variants.apply_async(args=[product.id],countdown=180) # 3 min
+        except Exception as e:
+            return Response({
+                "message": "Unable to add Product.",
+                "details": str(e)
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            "id": product.id,
+            "title": product.title,
+            "status": product.status,
+            "category": category.name
+        },status=status.HTTP_201_CREATED)
     
+    return Response({
+        "message": "Invalid Data",
+        "errors": serializer.errors, 
+    },status=status.HTTP_400_BAD_REQUEST)
