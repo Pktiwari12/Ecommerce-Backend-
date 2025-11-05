@@ -1,4 +1,5 @@
 /ecommerce-platform/.venv
 **/__pycache__
-/Milestone.txt
-/ecommerce-platform/
+/account_Milestone.txt
+/ecommerce-platform/.env
+/ecommerce-platform/media/products/

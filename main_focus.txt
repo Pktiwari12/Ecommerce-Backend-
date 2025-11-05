@@ -1,2 +1,0 @@
-Focus only product app. their models and use_case
-and tasks and permissions.
