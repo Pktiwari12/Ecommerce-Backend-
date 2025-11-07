@@ -1,6 +1,6 @@
 from rest_framework import serializers
-from .models import Category
-
+from .models import Category,Product,ProductVariant,CategoryAttribute,AttributeValue
+import json
 class LeafCategorySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
@@ -47,3 +47,101 @@ class AddProductSerializer(serializers.Serializer):
         
         return category
     
+
+
+class AddVariantSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField(required=True)
+    # sku = serializers.CharField(max_length=100,required=True)
+    adjusted_price = serializers.DecimalField(max_digits=10,decimal_places=2)
+    stock = serializers.IntegerField(required=True)
+
+    attribute_and_value = serializers.CharField()
+    #     child = serializers.DictField(
+    #         child = serializers.IntegerField()
+    #     ),required=True
+    # )
+
+    images = serializers.ListField(
+        child=serializers.ImageField(),
+        required=False,
+        allow_empty=True
+    )
+
+    def validate_product_id(self, value):
+        try:
+            product = Product.objects.get(id=value)
+            self.context['product'] = product
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product does not exist.")
+        
+        return value
+    
+    # def validate_sku(self,value):
+    #     if ProductVariant.objects.filter(sku=value).exists():
+    #         raise serializers.ValidationError("SKU already exists.")
+        
+    #     return value
+    
+    def validate_stock(self,value):
+        if value < 0:
+            raise serializers.ValidationError("Stock can not be negative.")
+        return value
+    
+    def validate_attribute_and_value(self,value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Invalid JSON for attribute_and_value")
+
+        # Ensure it's a list of dicts
+        if not isinstance(value, list):
+            raise serializers.ValidationError("attribute_and_value must be a list of dicts")
+        for item in value:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Each item must be a dictionary")
+            if 'attribute_id' not in item or 'value_id' not in item:
+                raise serializers.ValidationError("attribute_id and value_id are required")
+            return value
+        if not value:
+            raise serializers.ValidationError("Attributes are required.")
+        
+        product = self.context.get('product')
+        try:
+            category = product.category.first()
+        except Exception as e:
+            raise serializers.ValidationError("Unable to find catagory for this product.")
+        
+        if not category:
+            raise serializers.ValidationError("Product has no category.")
+        
+        allowed_attrs = CategoryAttribute.objects.filter(category=category).values_list('attribute_id',flat=True)
+
+        seen = set()
+        for attr in value:
+            attr_id = attr.get('attribute_id')
+            val_id = attr.get('value_id')
+
+            # required in json format
+            if not attr_id or not val_id:
+                raise serializers.ValidationError("attribute_id + value_id are required.")
+            
+            # must be allowed by category
+            if attr_id not in allowed_attrs:
+                raise serializers.ValidationError(f"Attribute {attr_id} not allowed in this category.")
+            
+            # must not duplicate attribute
+            if attr_id in seen:
+                raise serializers.ValidationError(f"Duplicate attribute {attr.id} is not allowed.")
+            
+            seen.add(attr_id)
+
+            # values must be corresponding to attribute
+            if not AttributeValue.objects.filter(id=val_id,attribute_id=attr_id).exists():
+                raise serializers.ValidationError(f"Invaild value {val_id} for attribute {attr_id}.")
+            
+        return value
+
+        
+
+

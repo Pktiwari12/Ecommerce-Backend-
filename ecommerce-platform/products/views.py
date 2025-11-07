@@ -1,15 +1,17 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.decorators import api_view,permission_classes,parser_classes
 from rest_framework import status
 from rest_framework.response import Response
-from .utils import find_leaf_nodes
+from .utils import find_leaf_nodes,generate_sku
 from .serializers import (LeafCategorySerializer,CategoryAttributeValueSerializer,
-                          AddProductSerializer,
+                          AddProductSerializer,AddVariantSerializer
                           )
 from .permissions import IsVendor
 from .models import (Category,CategoryAttribute,Attribute,AttributeValue,
-                     Product,ProductVariant)
+                     Product,ProductVariant,VariantAttribute,ProductVariantImage)
 from .tasks import delete_product_without_variants
+# for image upload
+from rest_framework.parsers import MultiPartParser,FormParser
 
 # Create your views here.
 
@@ -93,4 +95,89 @@ def add_product(request):
     return Response({
         "message": "Invalid Data",
         "errors": serializer.errors, 
+    },status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsVendor])
+@parser_classes([MultiPartParser,FormParser])
+
+def add_variants(request,product_id):
+    data = request.data.copy()
+    data['product_id'] = product_id
+
+    serializer = AddVariantSerializer(data=data)
+
+    if serializer.is_valid():
+        product = serializer.context['product']
+        # sku = serializer.validated_data['sku']
+        stock = serializer.validated_data['stock']
+        adj_price = serializer.validated_data['adjusted_price']
+        attrs = serializer.validated_data['attribute_and_value']
+        images = serializer.validated_data.get('images',{})
+        sku = generate_sku(product.title,attrs)
+        print(sku)
+        if ProductVariant.objects.filter(sku=sku).exists():
+            return Response({
+                "message": "This Variants for the product is already available."
+            },status=status.HTTP_400_BAD_REQUEST)
+        # fetch attribute names and values for SKU
+        try:
+            # create variant
+            variant = ProductVariant.objects.create(
+                product=product,
+                sku=sku,
+                adjusted_price=adj_price,
+                stock=stock,
+                is_active=False
+            )
+        except Exception as e:
+            return Response({
+                "message": "Unable to add variant.",
+                "error": str(e),
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+        # save attribute combinaions corresponding to variants
+        try:
+            for attr in attrs:
+                VariantAttribute.objects.create(
+                    variant=variant,
+                    attribute_id=attr['attribute_id'],
+                    value_id=attr['value_id']
+                )
+        except Exception as e:
+            return Response({
+                "message": "Unable to add variant attributes and values.",
+                "error": str(e),
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # save images
+        try:
+            for index,img in enumerate(images):
+                ProductVariantImage.objects.create(
+                    product=product,
+                    variant=variant,
+                    image=img,
+                    is_primary=(index==0) # first image primary
+                )   
+        except Exception as e:
+            return Response({
+                "message": "Unable to add variant.",
+                "error": str(e),
+            },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        product.status = 'pending'
+        product.save()
+
+        return Response({
+            "message": "Variant added Successfully.",
+            "variant_id": variant.id
+        },status=status.HTTP_201_CREATED)
+        
+
+    
+    return Response({
+        "message": "Invalid Data",
+        "errors": serializer.errors,
     },status=status.HTTP_400_BAD_REQUEST)
