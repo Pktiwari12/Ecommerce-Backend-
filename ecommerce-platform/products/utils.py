@@ -1,7 +1,8 @@
-from .models import Category,AttributeValue
+from .models import Category,AttributeValue,Product
 
 def find_leaf_nodes():
     leaf_nodes = Category.objects.filter(is_leaf=True)
+    return leaf_nodes
 
 def generate_sku(str,attribute_value):
     product_title = str.lower().replace(' ','-')
@@ -27,6 +28,66 @@ def generate_sku(str,attribute_value):
         
     return f"{product_title}-{attribute_part}"
         
+
+def get_products(products):
+    # try:
+    #     if(not for_all):
+    #         # get only one product. ignore var name
+    #         products = Product.objects.prefetch_related(
+    #             "variants__attributes__attribute",
+    #             "variants__attributes__value",
+    #             "variants__images"
+    #         ).filter(id=product_id) 
+    #     else: 
+    #         products = Product.objects.prefetch_related(
+    #             "variants__attributes__attribute",
+    #             "variants__attributes__value",
+    #             "variants__images"
+    #         ).filter(status='active')
+
+    # except Product.DoesNotExist:
+    #     return None
+    # except Exception as e:
+    #     return -1           # -1 indicates unable to find other table details related to  product.
+    
+    # if not products:
+    #     return 0
+    
+    data = []
+    for product in products:
+        product_data = {
+            "id": product.id,
+            "title": product.title,
+            "description": product.description,
+            "base_price": product.base_price,
+            "status": product.status,
+            "variants": []
+        }
+        for variant in product.variants.all():
+            product_data["variants"].append({
+                "id": variant.id,
+                "name": variant.sku,
+                "adjusted_price": variant.adjusted_price,
+                "stock": variant.stock,
+                "is_active": variant.is_active,
+                "attributes": [
+                    {
+                        "attribute": attr.attribute.name,
+                        "value": attr.value.value
+                    }for attr in variant.attributes.all()
+                ],
+                "images": [
+                    {
+                        "image": img.image.url,
+                        "alt_text": img.alt_text,
+                        "is_primary": img.is_primary
+                    } for img in variant.images.all()
+                    
+                ]
+            })
+        data.append(product_data)
+    return data
+    
 
     
 

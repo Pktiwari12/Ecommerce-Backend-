@@ -6,4 +6,6 @@ urlpatterns = [
     path("category/<int:category_id>/attributes/",views.category_attribute, name='category_attribute'),
     path("add-product/",views.add_product, name='add_product'),
     path("add-variants/<product_id>/",views.add_variants,name='add_variants'),
+    path("get/product/<product_id>/",views.get_product,name='show_product'),
+    path("get/products/",views.get_all_products,name='get_all_products'),
 ]

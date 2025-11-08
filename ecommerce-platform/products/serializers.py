@@ -142,6 +142,4 @@ class AddVariantSerializer(serializers.Serializer):
             
         return value
 
-        
-
 
