@@ -241,6 +241,69 @@ def get_all_products(request):
     
     return Response(data,status=status.HTTP_200_OK)
     
+# for vendor specific
+@api_view(['GET'])
+@permission_classes([IsVendor])
+def vendor_get_product(request,product_id):
+    print("I am in sisngl")
+    try:
+        product = Product.objects.prefetch_related(
+                "variants__attributes__attribute",
+                "variants__attributes__value",
+                "variants__images"
+            ).filter(id=product_id,vendor=request.user)
+    except Exception as e:
+        return Response({
+            "message": "Unable to find variants of products"
+        },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    if not product:
+        return Response({
+            "message": "Product is not Found."
+        },status=status.HTTP_400_BAD_REQUEST)
+    
+    # if product[0].status != 'active':
+    #     return Response({
+    #         "message": "Active product is not found."
+    #     },status=status.HTTP_400_BAD_REQUEST)
+    
+    data = get_products(product)
 
-        
+    if len(data )== 0:
+        return Response({
+            "message": "Unable to find product details."
+        },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    return Response(data,status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsVendor])
+def vendor_get_all_products(request):
+    print("I am hre")
+    try:
+        products = Product.objects.prefetch_related(
+                "variants__attributes__attribute",
+                "variants__attributes__value",
+                "variants__images"
+            ).filter(vendor=request.user)
+    except Exception as e:
+        print("Error: ",e)
+        return Response({
+            "message": " to find variants of products"
+        },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    if not products:
+        return Response({
+            "message": "Products not Found."
+        },status=status.HTTP_400_BAD_REQUEST)
+    
+    data = get_products(products)
+    
+    if len(data )== 0:
+        return Response({
+            "message": "no active product found"
+        },status=status.HTTP_200_OK)
+    
+    return Response(data,status=status.HTTP_200_OK)
+    
