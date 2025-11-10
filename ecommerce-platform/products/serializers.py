@@ -69,7 +69,7 @@ class AddVariantSerializer(serializers.Serializer):
 
     def validate_product_id(self, value):
         try:
-            product = Product.objects.get(id=value)
+            product = Product.objects.get(id=value,is_deleted=False)
             self.context['product'] = product
         except Product.DoesNotExist:
             raise serializers.ValidationError("Product does not exist.")
@@ -140,6 +140,50 @@ class AddVariantSerializer(serializers.Serializer):
             if not AttributeValue.objects.filter(id=val_id,attribute_id=attr_id).exists():
                 raise serializers.ValidationError(f"Invaild value {val_id} for attribute {attr_id}.")
             
+        return value
+
+
+class ProductUpdateSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255, required=True)
+    description = serializers.CharField(required=True)
+    base_price = serializers.DecimalField(max_digits=10, decimal_places=2,required=True)
+    status = serializers.CharField(required=True)
+
+    def validate_status(self,value):
+        if not value in ['active', 'inactive']:
+            raise serializers.ValidationError("value must be active or inactve.")
+        
+        return value
+    
+    def validate_title(self,value):
+        product = self.context['product']
+        if Product.objects.filter(title=value).exclude(id=product.id).exists():
+            raise serializers.ValidationError("Product title must be unique.")
+        
+        return value
+        
+        
+    def validate_base_price(self,value):
+        if value < 0:
+            raise serializers.ValidationError("Pricee can not be negative.")
+        
+        return value
+
+
+
+class VariantUpdateSerializer(serializers.Serializer):
+    # sku = serializers.CharField(max_length=100,required=True)
+    adjusted_price = serializers.DecimalField(max_digits=10,decimal_places=2,required=True)
+    stock = serializers.IntegerField(required=True)
+    is_active = serializers.BooleanField(required=True)
+    images = serializers.ListField(
+        child=serializers.ImageField(),
+        required=False,
+        allow_empty=True
+    )    
+    def validate_stock(self,value):
+        if value < 0:
+            raise serializers.ValidationError("Stock can not be negative.")
         return value
 
 

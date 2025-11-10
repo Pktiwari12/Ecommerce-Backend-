@@ -1,4 +1,5 @@
 from .models import Category,AttributeValue,Product
+from datetime import datetime
 
 def find_leaf_nodes():
     leaf_nodes = Category.objects.filter(is_leaf=True)
@@ -26,8 +27,14 @@ def generate_sku(str,attribute_value):
             return None
     attribute_part = "-".join(f"{a['attribute_name'].lower()}-{a['attribute_value'].lower()}" for a in attr_list)
         
-    return f"{product_title}-{attribute_part}"
-        
+    return f"{product_title}@{attribute_part}"
+
+def generate_one_time_ever_product_name(title):
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    pt = title.lower().replace(' ','-')
+    return f"{pt}_{timestamp}"
+
 
 def get_products(products):
     # try:
@@ -63,7 +70,7 @@ def get_products(products):
             "status": product.status,
             "variants": []
         }
-        for variant in product.variants.all():
+        for variant in product.variants.filter(is_deleted=False):
             product_data["variants"].append({
                 "id": variant.id,
                 "name": variant.sku,
@@ -89,5 +96,12 @@ def get_products(products):
     return data
     
 
+def generate_sku_for_deleted_variants(sku):
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    return f"{sku}_{timestamp}"
     
-
+def generate_title_for_deleted_product(title):
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    return f"{title} {timestamp}"

@@ -67,11 +67,13 @@ class Product(models.Model):
         ("active","Active"),("inactive", "Inactive"),("deleted","Deleted"),("pending","Pending"),
     ]
     vendor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products")
+    const_name = models.CharField(max_length=300,null=False,blank=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
     base_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=status_choice,default='inactive')
     # stock = models.PositiveIntegerField(default=0)
+    is_deleted = models.BooleanField(default=False)
     category = models.ManyToManyField(Category,related_name="products",blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -87,6 +89,7 @@ class ProductVariant(models.Model):
     adjusted_price = models.DecimalField(max_digits=10, decimal_places=2,null=True)
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
