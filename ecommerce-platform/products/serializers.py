@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category,Product,ProductVariant,CategoryAttribute,AttributeValue
+from .models import Category,Product,ProductVariant,CategoryAttribute,AttributeValue,ProductVariantImage
 import json
 class LeafCategorySerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -176,6 +176,9 @@ class VariantUpdateSerializer(serializers.Serializer):
     adjusted_price = serializers.DecimalField(max_digits=10,decimal_places=2,required=True)
     stock = serializers.IntegerField(required=True)
     is_active = serializers.BooleanField(required=True)
+    deleted_images_id = serializers.CharField(required=False)
+    primary_image_id = serializers.IntegerField(required=False)
+    primary_image = serializers.ImageField(required=False,allow_null=True)
     images = serializers.ListField(
         child=serializers.ImageField(),
         required=False,
@@ -185,5 +188,53 @@ class VariantUpdateSerializer(serializers.Serializer):
         if value < 0:
             raise serializers.ValidationError("Stock can not be negative.")
         return value
+
+    def validate_primary_image_id(self,value):
+        if not value: # no problem if if value == none
+            return value
+        print("Hello, I am in primary_image field label.")
+        if not ProductVariantImage.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Image id not found.")
+        
+        if  ProductVariantImage.objects.filter(id=value,is_primary=False).exists():
+            raise serializers.ValidationError("This id is not primary image")
+        
+        return value
+    
+    def validate(self,data):
+        pid = data.get('primary_image_id')
+        pimg = data.get('primary_image')
+        print("Hello, I am in data label.")
+        if not pid and not pimg:
+            raise serializers.ValidationError("Both primary_image_id and primary_image can not be empty.")
+        del_img_id = getattr(self,'deleted_images_id',[])
+        if pid in del_img_id:
+            raise serializers.ValidationError("Deleted_images_id must not have primary_image_id.")
+        return data
+    
+    def validate_deleted_images_id(self,value):
+        print("Hey I am here")
+        if not value:
+            print("value is none initially.")
+            return value
+        if isinstance(value,str):
+            try:
+                print("value is string initially.")
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Invalid JSON for deleted_image_id.It must be list.")
+            
+        if not isinstance(value,list):
+            raise serializers.ValidationError("deleted_image_id must be a list.")
+        print("value is list initially.")
+        self.deleted_images_id = value
+        for id in value:
+            print(id)
+            if not ProductVariantImage.objects.filter(id=id,is_deleted=False).exists():
+                raise serializers.ValidationError(f" image id {id} is not found to be deleted. ")
+        return value
+            
+
+
 
 

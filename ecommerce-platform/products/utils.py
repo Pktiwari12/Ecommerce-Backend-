@@ -62,12 +62,16 @@ def get_products(products):
     
     data = []
     for product in products:
+        category_id = list(product.category.all())[0].id
+        print(category_id)
+
         product_data = {
             "id": product.id,
             "title": product.title,
             "description": product.description,
             "base_price": product.base_price,
             "status": product.status,
+            "category_id": category_id,
             "variants": []
         }
         for variant in product.variants.filter(is_deleted=False):
@@ -105,3 +109,5 @@ def generate_title_for_deleted_product(title):
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
     return f"{title} {timestamp}"
+
+

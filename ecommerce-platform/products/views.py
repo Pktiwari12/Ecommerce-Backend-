@@ -153,6 +153,7 @@ def add_variants(request,product_id):
                     value_id=attr['value_id']
                 )
         except Exception as e:
+            variant.delete() # rollback
             return Response({
                 "message": "Unable to add variant attributes and values.",
                 "error": str(e),
@@ -161,13 +162,17 @@ def add_variants(request,product_id):
         # save images
         try:
             for index,img in enumerate(images):
+                print("I am ere")
+                alt_text = f"{variant.sku}-Image {index+1}"
                 ProductVariantImage.objects.create(
                     product=product,
                     variant=variant,
                     image=img,
+                    alt_text=alt_text,
                     is_primary=(index==0) # first image primary
                 )   
         except Exception as e:
+            variant.delete() # rollback
             return Response({
                 "message": "Unable to add variant.",
                 "error": str(e),
@@ -401,14 +406,73 @@ def update_variant(request,product_id,variant_id):
     
     serializer = VariantUpdateSerializer(data=request.data)
     if serializer.is_valid():
-        variant.adjusted_price = serializer.validated_data['adjusted_price']
-        variant.stock = serializer.validated_data['stock']
-        variant.is_active = serializer.validated_data['is_active']
+        variant.adjusted_price = serializer.validated_data.get('adjusted_price')
+        variant.stock = serializer.validated_data.get('stock')
+        variant.is_active = serializer.validated_data.get('is_active')
 
+        if not serializer.validated_data.get('primary_image_id'):
+            try:
+                print("I am ere")
+                alt_text = f"{variant.sku}-Primary-Image"
+                prev_primary_img = ProductVariantImage.objects.get(variant=variant,is_primary=True)
+                pvi = ProductVariantImage.objects.create(
+                    product=variant.product,
+                    variant=variant,
+                    image=serializer.validated_data.get('primary_image'),
+                    alt_text=alt_text,
+                    is_primary=True 
+                )
+                prev_primary_img.is_primary = False
+                prev_primary_img.is_deleted = True
+                prev_primary_img.save()
+                print(f"Primary image id {pvi.id}")
+            except Exception as e:
+                return Response({
+                    "message": "Unable to add primary image.",
+                    "error": str(e),
+                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        deleted_image_id = serializer.validated_data.get('deleted_images_id')
+        print(deleted_image_id)
+        if deleted_image_id:
+            print(deleted_image_id)
+            for id in deleted_image_id:
+                try:
+                    del_img = ProductVariantImage.objects.get(id=id,variant=variant)
+                    del_img.is_deleted = True
+                    del_img.save()
+                except ProductVariantImage.DoesNotExist:
+                    return Response({
+                        "message": "Image id for deletion is not found."
+                    },status=status.HTTP_404_NOT_FOUND)
+        
+        images = serializer.validated_data.get('images',{})
+        print(images)
+        for img in images:
+            alt_text = f"{variant.sku}-Image"
+            try:
+                ProductVariantImage.objects.create(
+                    product=variant.product,
+                    variant=variant,
+                    image=img,
+                    alt_text=alt_text,
+                    is_primary=False 
+                )
+            except Exception as e:
+                return Response({
+                    "message": "Unable to add images",
+                    "error": str(e)
+                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        variant.save()
+
+        return Response({
+            "message": "Variant Updated Successfully"
+        },status=status.HTTP_200_OK)
+    
     return Response({
         "message": "Invaid Data",
         "errors": serializer.errors,
-    },status=status.HTTP_400_BAD_REQUEST)
+    },status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['DELETE'])
 @permission_classes([IsVendor])
@@ -432,3 +496,5 @@ def delete_variant(request,product_id,variant_id):
     return Response({
         "message": "Variant is deleted successfully.",
     },status=status.HTTP_200_OK)
+
+

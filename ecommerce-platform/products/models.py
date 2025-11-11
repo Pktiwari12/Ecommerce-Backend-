@@ -3,6 +3,21 @@ from django.db import models
 from accounts.models import User
 # Create your models here.
 
+
+def variant_image_upload_path(instance,filename):
+    # extention
+    
+    ext = filename.split('.')[-1]
+    print("I am in method")
+    sku = instance.variant.sku
+    # count = instance.variant.images.count() + 1  # add 1 for new image
+    # print(count)
+    filename = f"{instance.alt_text}.{ext}"
+    print("I am in end of method.")
+    print(filename)
+    return f"products/{instance.product.id}/{sku}/{filename}"
+
+
 # multihierarchy catagory
 class Category(models.Model):
     name = models.CharField(max_length=150, unique=True)
@@ -126,11 +141,11 @@ class VariantAttribute(models.Model):
 class ProductVariantImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE,related_name='images')
-    image = models.ImageField(upload_to='products')
+    image = models.ImageField(upload_to=variant_image_upload_path)
     alt_text = models.CharField(max_length=200, blank=True)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    is_deleted = models.BooleanField(default=False)
     class Meta:
         ordering = ['-is_primary','created_at']
     
