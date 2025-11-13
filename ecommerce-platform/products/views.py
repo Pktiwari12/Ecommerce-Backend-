@@ -217,7 +217,7 @@ def get_product(request,product_id):
             "message": "Active product is not found."
         },status=status.HTTP_400_BAD_REQUEST)
     
-    data = get_products(product)
+    data = get_products(request,product)
 
     if len(data )== 0:
         return Response({
@@ -243,7 +243,7 @@ def get_all_products(request):
         return Response({
             "message": "Unable to find variants of products"
         },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    data = get_products(products)
+    data = get_products(request,products)
 
     if len(data )== 0:
         return Response({
@@ -278,7 +278,7 @@ def vendor_get_product(request,product_id):
     #         "message": "Active product is not found."
     #     },status=status.HTTP_400_BAD_REQUEST)
     
-    data = get_products(product)
+    data = get_products(request,product)
 
     if len(data )== 0:
         return Response({
@@ -309,7 +309,7 @@ def vendor_get_all_products(request):
             "message": "Products not Found."
         },status=status.HTTP_400_BAD_REQUEST)
     
-    data = get_products(products)
+    data = get_products(request,products)
     
     if len(data )== 0:
         return Response({
@@ -497,4 +497,24 @@ def delete_variant(request,product_id,variant_id):
         "message": "Variant is deleted successfully.",
     },status=status.HTTP_200_OK)
 
+
+
+@api_view(['GET'])
+@permission_classes([])
+def get_category_path(request):
+    try:
+        categories = Category.objects.filter(is_leaf=True)
+    except Exception as e:
+        return Response({
+            "message": "Unable to load attribute"
+        },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    data = []
+    for cat in categories:
+        data.append({
+            "id": cat.id,
+            "category_path": cat.get_path()
+        })
+    
+    return Response(data,status=status.HTTP_200_OK)
 
