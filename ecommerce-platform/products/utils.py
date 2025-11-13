@@ -36,7 +36,7 @@ def generate_one_time_ever_product_name(title):
     return f"{pt}_{timestamp}"
 
 
-def get_products(products):
+def get_products(request,products):
     # try:
     #     if(not for_all):
     #         # get only one product. ignore var name
@@ -85,7 +85,8 @@ def get_products(products):
                 ],
                 "images": [
                     {
-                        "image": img.image.url,
+                        "id": img.id,
+                        "image": request.build_absolute_uri(img.image.url),
                         "alt_text": img.alt_text,
                         "is_primary": img.is_primary
                     } for img in variant.images.all()
