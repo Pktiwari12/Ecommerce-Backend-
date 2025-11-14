@@ -4,15 +4,17 @@
 # from .serializers import CustomerSerializer
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.decorators import api_view,permission_classes,authentication_classes
 from django.core.mail import send_mail
-# from django.conf import settings
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from .serializers import (VendorRegisterOTPSerializer,VendorVerifyOTPSerializer,
                           MobileOtpRequestSerializer,VerifyMobileOTPSerializer,
                           RegisterVendorSerializer)
-from .models import Vendor,VendorEmailOtp,VendorMobileOtp
+from .models import (Vendor,VendorEmailOtp,VendorMobileOtp,VendorAccessToken)
 from ecommerce_platform.utils import generate_otp
+from .utils.on_board_token import create_vendor_step_token,verify_vendor_step_token
+from .authentication import VendorStepAuthentication
 User = get_user_model()
 
 @api_view(['POST'])
@@ -32,18 +34,26 @@ def vendor_register_otp(request):
             )
         except Exception as e:
                return Response({
-                    "message": "Unable to send message"
+                    "message": "Unable to send email"
                },status = status.HTTP_500_INTERNAL_SERVER_ERROR)
         try:
             # print("Jai Shree Ram")
+            # print(token)
             # print(otp)
             # print(business_email)
-            VendorEmailOtp.objects.update_or_create(
+            email_otp_obj,create = VendorEmailOtp.objects.update_or_create(
                 business_email=serializer.validated_data.get('business_email'),
                 defaults={"otp": otp,
                           "isUsed": False,
                           "is_verified": False}
             )
+            token = create_vendor_step_token(serializer.validated_data.get('business_email'),5)
+            # VendorAccessToken.objects.update_or_create(
+            #      business_email= email_otp_obj,
+            #      defaults={
+            #           "access_token": token
+            #      }
+            # )
         except Exception as e:
             return Response({
                 "error": "Unable to process otp request.",
@@ -51,7 +61,8 @@ def vendor_register_otp(request):
             },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
-            "message": "OTP sent successfully. Check your email."
+            "message": "OTP sent successfully. Check your email.",
+            "access_token": token
         },status=status.HTTP_200_OK)
     
     return Response({
@@ -61,17 +72,31 @@ def vendor_register_otp(request):
         
 @api_view(['POST'])
 @permission_classes([])
+@authentication_classes([VendorStepAuthentication])
 def vendor_verify_otp(request):
-     serializer = VendorVerifyOTPSerializer(data=request.data)
 
-     if serializer.is_valid():
-          emailotp = serializer.save()
-          return Response({
-               "message": "Email is verified successfully.",
-               "business_email": emailotp.business_email
-          },status=status.HTTP_201_CREATED)
-     
-     return Response({
+    token = request.auth
+    if not token:
+         return Response({
+              "message": "Token is not provided."
+         },status=401)
+    
+    email_in_token = token.get('field')
+ 
+    serializer = VendorVerifyOTPSerializer(data=request.data, context = {
+         "email_in_token": email_in_token
+    })
+
+    if serializer.is_valid():
+        business_email = serializer.validated_data.get('business_email')
+        emailotp = serializer.save()
+        token = create_vendor_step_token(business_email,5)
+        return Response({
+           "message": "Email is verified successfully.",
+           "acess_token": token
+        },status=status.HTTP_201_CREATED)
+ 
+    return Response({
           "message": "Invalid Data",
           "errors": serializer.errors,
      },status=status.HTTP_400_BAD_REQUEST)
@@ -79,50 +104,84 @@ def vendor_verify_otp(request):
 
 @api_view(['POST'])
 @permission_classes([])
+@authentication_classes([VendorStepAuthentication])
 def request_mobile_otp(request):
-     serializer = MobileOtpRequestSerializer(data=request.data)
+     
+     token = request.auth
+     if not token:
+          return Response({
+               "message": "Token is not provided"
+          },status=401)
+     
+     email_in_token = token.get("field")
+     serializer = MobileOtpRequestSerializer(data=request.data, context={
+          "email_in_token": email_in_token
+     })
+
      if serializer.is_valid():
-          mobile_no = serializer.validated_data.get('mobile_number')
-          otp = generate_otp() #6 digit
-          try:
-               VendorMobileOtp.objects.update_or_create(
-                    phone=mobile_no,
-                    defaults={
-                         "otp": otp,
-                         "isUsed": False,
-                         "is_verified": False
-                    }
-               )
-          except Exception as e:
-               return Response({
-                    "message": "Unable to process mobile otp."
+
+        mobile_no = serializer.validated_data.get('mobile_number')
+        email_otp = serializer.validated_data.get("email")
+        otp = generate_otp() #6 digit
+
+        try:
+            VendorMobileOtp.objects.update_or_create(
+                phone=mobile_no,
+                defaults={
+                   "business_email": email_otp,
+                   "otp": otp,
+                   "isUsed": False,
+                   "is_verified": False
+                }
+            )
+               # Send This Otp to the mobile number using api.
+            token = create_vendor_step_token(mobile_no,5)
+        except Exception as e:
+                return Response({
+                    "message": "Unable to process mobile otp.",
                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
           
-          return Response({
-               "message": "Sorry,Unable to send otp on mobile number. contact admin."
+        return Response({
+               "message": "Sorry,Unable to send otp on mobile number. contact admin.",
+               "access_token": token
           },status=status.HTTP_200_OK)
      
      return Response({
                "message": "Invalid Data",
                "error": serializer.errors
           },status=status.HTTP_400_BAD_REQUEST)
+
+
      
 @api_view(['POST'])
 @permission_classes([])
+@authentication_classes([VendorStepAuthentication])
 def verify_mobile_otp(request):
-    serializer = VerifyMobileOTPSerializer(data=request.data)
-
+    token = request.auth
+    mobile_no_in_token = token.get('field')
+    serializer = VerifyMobileOTPSerializer(data=request.data,context={
+         "mobile_no_in_token": mobile_no_in_token
+    })
     if serializer.is_valid():
         mobileotp = serializer.save()
+        if not mobileotp:
+             return Response({
+                  "message": "Unable to proceed otp"
+             },status=500)
+        
+        token = create_vendor_step_token(mobileotp.phone,5)
         return Response({
             "message": "Mobile number is verified successfully.",
-           "business_email": mobileotp.phone
+             "access_token": token
         },status=status.HTTP_201_CREATED)
      
     return Response({
         "message": "Invalid Data",
         "errors": serializer.errors,
     },status=status.HTTP_400_BAD_REQUEST)        
+
+
+
 
 
 @api_view(['POST'])

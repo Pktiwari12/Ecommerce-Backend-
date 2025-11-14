@@ -19,8 +19,10 @@ class VendorVerifyOTPSerializer(serializers.Serializer):
     def validate_business_email(self,value):
         if Vendor.objects.filter(business_email=value,is_completed=True).exists():
             raise serializers.ValidationError("Email is already registered.")
+        if self.context['email_in_token'] != value:
+            raise serializers.ValidationError("Enter Valid Email.")
         return value
-        
+    
     def validate(self,data):
         try:
             print(data.get("business_email"))
@@ -49,12 +51,27 @@ class VendorVerifyOTPSerializer(serializers.Serializer):
 
 class MobileOtpRequestSerializer(serializers.Serializer):
     mobile_number = serializers.CharField(required=True)
+    email = serializers.CharField(required=True)
+
+    def validate_email(self,value):
+        if self.context.get('email_in_token') != value:
+            raise serializers.ValidationError("Verify your email.")
+        try:
+            email_otp = VendorEmailOtp.objects.filter(business_email=value,is_verified=True)
+            if not email_otp:
+                raise serializers.ValidationError("Verify your email.")
+            if len(email_otp) != 1:
+                raise serializers.ValidationError("Unable to proceed otp") # status 500
+
+        except Exception as e:
+            raise serializers.ValidationError("Unable to proceed otp") #for this 500 status is valid not 400
+
+        return email_otp.first
 
     def validate_mobile_number(self,value):
         print(value)
         if len(value) != 10:
             raise serializers.ValidationError("only ten digits allowed.")
-        
         if not value.isdigit():
             raise serializers.ValidationError("Mobile no. must have only numeric value")
         
@@ -80,6 +97,9 @@ class VerifyMobileOTPSerializer(serializers.Serializer):
         
         if ' ' in value or '\t' in value or '\n' in value:
             raise serializers.ValidationError("Invalid mobile number.")
+        
+        if self.context.get('mobile_no_in_token') != value:
+            raise serializers.ValidationError("Invalid mobile number.") # 400 status code
         
         if Vendor.objects.filter(phone=value,is_completed=True).exists():
             raise serializers.ValidationError("Mobile number already exists.")
