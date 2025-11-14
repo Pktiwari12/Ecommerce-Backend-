@@ -134,6 +134,8 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("email is not verified.Please verify first.")
         if not user.is_active:
             raise serializers.ValidationError(" not active user.")
+        # if user.role == 'vendor':
+        #     raise serializers.ValidationError("User not Found.")
         
         # check user credentials
         user = authenticate(email=data['email'],password=data['password']) # this in inbuilt authentication backend. For Custom, go through Alumni project

@@ -62,12 +62,17 @@ def get_products(request,products):
     
     data = []
     for product in products:
+        category = list(product.category.all())[0]
+        category_id = category.id
+        print(category_id)
+
         product_data = {
             "id": product.id,
             "title": product.title,
             "description": product.description,
             "base_price": product.base_price,
             "status": product.status,
+            "category_id": category_id,
             "variants": []
         }
         for variant in product.variants.filter(is_deleted=False):
@@ -89,7 +94,7 @@ def get_products(request,products):
                         "image": request.build_absolute_uri(img.image.url),
                         "alt_text": img.alt_text,
                         "is_primary": img.is_primary
-                    } for img in variant.images.all()
+                    } for img in variant.images.filter(is_deleted=False)
                     
                 ]
             })
@@ -106,3 +111,5 @@ def generate_title_for_deleted_product(title):
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
     return f"{title} {timestamp}"
+
+
