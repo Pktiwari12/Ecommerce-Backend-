@@ -15,8 +15,5 @@ urlpatterns = [
     path("update/variant/<int:product_id>/<int:variant_id>/",views.update_variant,name='update_variants'),
     path("delete/variant/<int:product_id>/<int:variant_id>/",views.delete_variant,name='delete_variants'),
     path("get/category-path/",views.get_category_path,name='get_category_path'),
-<<<<<<< HEAD
-=======
     
->>>>>>> products
 ]

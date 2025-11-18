@@ -44,39 +44,10 @@ class VendorEmailOtp(models.Model):
         return f"{self.business_email} :  {self.otp}"
 
 
-class PickUpAddress(models.Model):
-    business_email = models.OneToOneField(VendorEmailOtp,on_delete=models.CASCADE,related_name='address')
-    # vendor = models.ForeignKey(Vendor,on_delete=models.CASCADE,related_name='pickup_address')
-    address_line_1 = models.CharField(max_length=300,blank=False,null=False)
-    address_line_2 = models.CharField(max_length=300,blank=True,null=True)
-    city = models.CharField(max_length=100,blank=False,null=False)
-    state = models.CharField(max_length=100,blank=False,null=False)
-    pincode = models.CharField(max_length=10,blank=False,null=False)
-
-    # these can be filled by exernal api
-    lattitude = models.DecimalField(max_digits=9,decimal_places=9,null=True,blank=True)
-    longitude = models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True)
-    is_primary = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
-class VendorID(models.Model):
-    business_email = models.OneToOneField(VendorEmailOtp,on_delete=models.CASCADE,related_name='gst_id')
-    # vendor = models.OneToOneField(Vendor,on_delete=models.CASCADE,related_name='documents')
-    gst = models.CharField(max_length=15,unique=True)
-    # pan_number = models.CharField(max_length=10,blank=True,null=True)
-    signeture = models.ImageField(upload_to=signeture_image_upload_path)
-    alt_text_signeture = models.CharField(max_length=200,blank=True,null=True)
-    # gst_certificate = models.FileField(upload_to=gst_certificate_upload_path)
-    # alt_text_gst_certificate = models.CharField(max_length=200,blank=True,null=True)
-    verified_at_usr_level = models.BooleanField(default=False)  # To verify Use Govt Pan API.
-    verified_by_admin = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
 
 class VendorMobileOtp(models.Model):
-    business_email = models.OneToOneField(VendorEmailOtp,on_delete=models.CASCADE,related_name='mobile_no')
-    phone = models.CharField(unique=True,blank=False)
+    business_email = models.EmailField(blank=False,null=False)
+    phone = models.CharField(blank=False,null=False)
     otp = models.CharField(max_length=6)
     # used first time only
     isUsed = models.BooleanField(default=False)
@@ -84,6 +55,9 @@ class VendorMobileOtp(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_verified = models.BooleanField(default=False)
     #otp vaild upto 5 min
+
+    class Meta:
+        unique_together = (('business_email','phone'),)
     def isExpire(self,t):
         return timezone.now() > self.updated_at + timezone.timedelta(minutes=t)
     
@@ -101,9 +75,9 @@ class Vendor(models.Model):
         ("SUSPENDED", "Suspended"),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='vendor')
+    owner = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='vendor')
     # identity
-    name = models.CharField(max_length=250)
+    full_name = models.CharField(max_length=250)
     seller_name = models.CharField(max_length=250) # like Stationary and etc
     business_email = models.EmailField(unique=True)
     phone = models.CharField(max_length=10,unique=True)
@@ -119,7 +93,31 @@ class Vendor(models.Model):
     def __str__(self):
         return self.seller_name
 
+class PickUpAddress(models.Model):
+    vendor = models.OneToOneField(Vendor,on_delete=models.CASCADE,related_name='address')
+    # vendor = models.ForeignKey(Vendor,on_delete=models.CASCADE,related_name='pickup_address')
+    address_line_1 = models.CharField(max_length=300,blank=False,null=False)
+    address_line_2 = models.CharField(max_length=300,blank=True,null=True)
+    city = models.CharField(max_length=100,blank=False,null=False)
+    state = models.CharField(max_length=100,blank=False,null=False)
+    pincode = models.CharField(max_length=10,blank=False,null=False)
 
-class VendorAccessToken(models.Model):
-    business_email = models.OneToOneField(VendorEmailOtp,on_delete=models.CASCADE,related_name="access_token")
-    access_token = models.CharField(max_length=300)
+    # these can be filled by exernal api
+    lattitude = models.DecimalField(max_digits=9,decimal_places=9,null=True,blank=True)
+    longitude = models.DecimalField(max_digits=9,decimal_places=6,null=True,blank=True)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class VendorID(models.Model):
+    vendor = models.OneToOneField(Vendor,on_delete=models.CASCADE,related_name='gst_docs')
+    gst = models.CharField(max_length=15,unique=True)
+    # pan_number = models.CharField(max_length=10,blank=True,null=True)
+    signeture = models.ImageField(upload_to=signeture_image_upload_path)
+    alt_text_signeture = models.CharField(max_length=200,blank=True,null=True)
+    gst_certificate = models.ImageField(upload_to=gst_certificate_upload_path)
+    alt_text_gst_certificate = models.CharField(max_length=200,blank=True,null=True)
+    verified_at_user_level = models.BooleanField(default=False)  # To verify Use Govt Pan API.
+    verified_by_admin = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    

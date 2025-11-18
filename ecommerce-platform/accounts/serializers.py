@@ -126,7 +126,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         try:
-            user = User.objects.get(email=data['email'])
+            user = User.objects.get(email=data['email'],role='customer')
         except User.DoesNotExist:
             raise serializers.ValidationError("Email does not exist.")
         
@@ -222,6 +222,8 @@ class forgotPasswordSerializer(serializers.Serializer):
         except:
             raise serializers.ValidationError("Unable to change the password")
         return self.user
+
+
 
 
     

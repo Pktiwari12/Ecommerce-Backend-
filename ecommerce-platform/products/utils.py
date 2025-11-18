@@ -73,6 +73,7 @@ def get_products(request,products):
             "base_price": product.base_price,
             "status": product.status,
             "category_id": category_id,
+            "category_path": category.get_path(),
             "variants": []
         }
         for variant in product.variants.filter(is_deleted=False):

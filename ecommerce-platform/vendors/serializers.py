@@ -1,14 +1,15 @@
 from rest_framework import serializers
 from accounts.models import User
-from .models import Vendor,VendorEmailOtp,VendorMobileOtp
+from .models import Vendor,VendorEmailOtp,VendorMobileOtp,VendorID
 import re
 
 class VendorRegisterOTPSerializer(serializers.Serializer):
     business_email = serializers.EmailField(required=True)
 
     def validate_business_email(self,value):
-        if Vendor.objects.filter(business_email=value,is_completed=True).exists():
+        if Vendor.objects.filter(business_email=value).exists():
             raise serializers.ValidationError("Email already exists.")
+        
         return value
 
 
@@ -17,7 +18,7 @@ class VendorVerifyOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(required=True)
 
     def validate_business_email(self,value):
-        if Vendor.objects.filter(business_email=value,is_completed=True).exists():
+        if Vendor.objects.filter(business_email=value).exists():
             raise serializers.ValidationError("Email is already registered.")
         if self.context['email_in_token'] != value:
             raise serializers.ValidationError("Enter Valid Email.")
@@ -49,26 +50,23 @@ class VendorVerifyOTPSerializer(serializers.Serializer):
         return self.emailotp
 
 
-class MobileOtpRequestSerializer(serializers.Serializer):
-    mobile_number = serializers.CharField(required=True)
-    email = serializers.CharField(required=True)
+class VendorRegisterMobileOtpSerializer(serializers.Serializer):
+    phone = serializers.CharField(required=True)
+    business_email = serializers.CharField(required=True)
 
-    def validate_email(self,value):
+    def validate_business_email(self,value):
         if self.context.get('email_in_token') != value:
             raise serializers.ValidationError("Verify your email.")
-        try:
-            email_otp = VendorEmailOtp.objects.filter(business_email=value,is_verified=True)
-            if not email_otp:
-                raise serializers.ValidationError("Verify your email.")
-            if len(email_otp) != 1:
-                raise serializers.ValidationError("Unable to proceed otp") # status 500
+        
+        if not VendorEmailOtp.objects.filter(business_email=value,is_verified=True).exists():
+            raise serializers.ValidationError("Email id is not verified.")
+        
+        if Vendor.objects.filter(business_email=value).exists():
+            raise serializers.ValidationError("Email is already registered.")
+        
+        return value
 
-        except Exception as e:
-            raise serializers.ValidationError("Unable to proceed otp") #for this 500 status is valid not 400
-
-        return email_otp.first
-
-    def validate_mobile_number(self,value):
+    def validate_phone(self,value):
         print(value)
         if len(value) != 10:
             raise serializers.ValidationError("only ten digits allowed.")
@@ -78,16 +76,16 @@ class MobileOtpRequestSerializer(serializers.Serializer):
         if ' ' in value or '\t' in value or '\n' in value:
             raise serializers.ValidationError("Invalid mobile number.")
         
-        if Vendor.objects.filter(phone=value,is_completed=True).exists():
+        if Vendor.objects.filter(phone=value).exists():
             raise serializers.ValidationError("Mobile number already exists.")
         
         return value
 
 class VerifyMobileOTPSerializer(serializers.Serializer):
-    mobile_number = serializers.CharField(required=True)
+    phone = serializers.CharField(required=True)
     otp = serializers.CharField(required=True)
 
-    def validate_mobile_number(self,value):
+    def validate_phone(self,value):
         print(value)
         if len(value) != 10:
             raise serializers.ValidationError("only ten digits allowed.")
@@ -98,10 +96,10 @@ class VerifyMobileOTPSerializer(serializers.Serializer):
         if ' ' in value or '\t' in value or '\n' in value:
             raise serializers.ValidationError("Invalid mobile number.")
         
-        if self.context.get('mobile_no_in_token') != value:
+        if self.context.get('phone_in_token') != value:
             raise serializers.ValidationError("Invalid mobile number.") # 400 status code
         
-        if Vendor.objects.filter(phone=value,is_completed=True).exists():
+        if Vendor.objects.filter(phone=value).exists():
             raise serializers.ValidationError("Mobile number already exists.")
         
         return value
@@ -112,7 +110,7 @@ class VerifyMobileOTPSerializer(serializers.Serializer):
             if len(data.get('otp')) != 6:
                 raise serializers.ValidationError("Invaild OTP.")
 
-            mobileotp = VendorMobileOtp.objects.get(phone=data.get('mobile_number'))
+            mobileotp = VendorMobileOtp.objects.get(phone=data.get('phone'))
             self.mobileotp = mobileotp
             if mobileotp.otp != data.get('otp'):
                 raise serializers.ValidationError("OTP is not vaild.")
@@ -120,6 +118,7 @@ class VerifyMobileOTPSerializer(serializers.Serializer):
                 raise serializers.ValidationError("OTP is used before.")
             if mobileotp.isExpire(5):
                 raise serializers.ValidationError("OTP is Expired.")
+            
         except VendorMobileOtp.DoesNotExist:
             raise serializers.ValidationError("Enter correct mobile number to verify otp.")
         
@@ -132,47 +131,107 @@ class VerifyMobileOTPSerializer(serializers.Serializer):
         return self.mobileotp
         
 
-class PickUpAddressSerializer(serializers.Serializer):
-    address_line_1 = serializers.CharField(required=True)
-    address_line_2 = serializers.CharField(required=False)
-    city = serializers.CharField(required=True)
-    state = serializers.CharField(required=True)
-    pincode = serializers.CharField(required=True)
-    is_primary = serializers.BooleanField(required=True)
 
 class RegisterVendorSerializer(serializers.Serializer):
     business_email = serializers.EmailField(required=True)
     phone = serializers.CharField(required=True)
-    name = serializers.CharField(required=True)
-    seller_name = serializers.CharField(required=True)
-    gst = serializers.CharField(required=True)
-    # password = serializers.CharField(required=True)
-    # confirm_password = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
 
     def validate_business_email(self,value):
-        if Vendor.objects.filter(business_email=value,is_completed=True).exists():
-            raise serializers.ValidationError("Email id is already exists.")
-        if not VendorEmailOtp.objects.filter(business_email=value).exists():
-            raise serializers.ValidationError("Email id not verified.")
+        if not VendorEmailOtp.objects.filter(business_email=value,is_verified=True).exists():
+            raise serializers.ValidationError("Email id is not verified.")
+        
+        if Vendor.objects.filter(business_email=value).exists():
+            raise serializers.ValidationError("Email id already registered.")
+        
+        # self.business_email = value
         return value
-    
+
     def validate_phone(self,value):
-        print(value)
-        if len(value) != 10:
-            raise serializers.ValidationError("only ten digits allowed.")
-        
-        if not value.isdigit():
-            raise serializers.ValidationError("Mobile no. must have only numeric value")
-        
-        if ' ' in value or '\t' in value or '\n' in value:
-            raise serializers.ValidationError("Invalid mobile number.")
-        
-        if Vendor.objects.filter(phone=value,is_completed=True).exists():
-            raise serializers.ValidationError("Mobile number already exists.")
-        
-        if not VendorMobileOtp.objects.filter(phone=value).exists():
+        business_email = self.initial_data.get('business_email')
+        if not VendorMobileOtp.objects.filter(phone=value,business_email=business_email,is_verified=True).exists():
             raise serializers.ValidationError("Mobile no. is not verified.")
+        
+        if Vendor.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("Mobile no. is already registered.")
+        
         return value
+
+    def validate(self,data):
+        strong_password = (
+            r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#_\-])[A-Za-z\d@$!%*?&#_\-]{8,15}$'
+        )
+        if not re.match(strong_password,data.get('password')):
+            raise serializers.ValidationError("Use Strong Password.")
+        
+        if data.get('password') != data.get('confirm_password'):
+            raise serializers.ValidationError("password and confirm_password must be same.")
+        
+        return data
+
+    
+class VendorLoginSerializer(serializers.Serializer):
+    business_email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class VendorDocumentSerializer(serializers.Serializer):
+    # business_email = serializers.EmailField(required=True)
+    # phone = serializers.CharField(required=True)
+    full_name = serializers.CharField(required=True)
+    seller_name = serializers.CharField(required=True)
+    gst = serializers.CharField(required=True)
+    signeture = serializers.ImageField(required=True)
+    gst_img = serializers.ImageField(required=True)
+    # def validate_business_email(self,value):
+    #     if Vendor.objects.filter(business_email=value,is_completed=True).exists():
+    #         raise serializers.ValidationError("Email id is already exists.")
+    #     try:
+    #         email = VendorEmailOtp.objects.get(business_email=value,is_verified=True)
+    #     except VendorEmailOtp.DoesNotExist:
+    #         raise serializers.ValidationError("Email id is not verified.")
+    #     # if not VendorEmailOtp.objects.filter(business_email=value,is_verified=True).exists():
+    #     #     raise serializers.ValidationError("Email id not verified.")
+    #     self.email = email
+    #     return email
+    
+    # def validate_phone(self,value):
+    #     print(value)
+    #     if len(value) != 10:
+    #         raise serializers.ValidationError("only ten digits allowed.")
+        
+    #     if not value.isdigit():
+    #         raise serializers.ValidationError("Mobile no. must have only numeric value")
+        
+    #     if ' ' in value or '\t' in value or '\n' in value:
+    #         raise serializers.ValidationError("Invalid mobile number.")
+        
+    #     if self.context.get("mobile_no_in_token") != value:
+    #         raise serializers.ValidationError("Invalid mobile number")
+
+        
+    #     if Vendor.objects.filter(phone=value,is_completed=True).exists():
+    #         raise serializers.ValidationError("Mobile number already exists.")
+        
+    #     if not VendorMobileOtp.objects.filter(phone=value,is_verified=True).exists():
+    #         raise serializers.ValidationError("Mobile no. is not verified.")
+    #     return value
     
     def validate_gst(self,value):
         gst_pattern = r"^([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$)"
@@ -180,24 +239,39 @@ class RegisterVendorSerializer(serializers.Serializer):
         if not re.match(gst_pattern,value):
             raise serializers.ValidationError("Invalid GSTIN fromat.")
         
-        if Vendor.objects.filter(gst=value,is_completed=True).exists():
-            raise serializers.ValidationError("User already registered with gst number.")
         return value
-    
-    # def validate(self,data):
-    #     strong_password = (
-    #         r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#_\-])[A-Za-z\d@$!%*?&#_\-]{8,15}$'
-    #     )
-    #     if not re.match(strong_password,data.get('password')):
-    #         raise serializers.ValidationError("Use Strong Password.")
-        
-    #     if data.get('password') != data.get('confirm_password'):
-    #         raise serializers.ValidationError("password and confirm_password must be same.")
-        
-    #     return data
-        
 
-        
+
+
+class PickUpAddressSerializer(serializers.Serializer):
+    business_email = serializers.EmailField(required=True)
+    gst = serializers.CharField()
+    address_line_1 = serializers.CharField(required=True) 
+    address_line_2 = serializers.CharField()      
+    city = serializers.CharField(required=True)
+    state = serializers.CharField(required=True)
+    pincode = serializers.CharField(required=True)
+
+    def validate_business_email(self,value):
+        try:
+            email = VendorEmailOtp.objects.get(business_email=value,is_verified=True)
+        except VendorEmailOtp.DoesNotExist:
+            raise serializers.ValidationError("Email does not exist.")
+        self.email = email
+        return email
+    
+    def validate_gst(self,value):
+        if self.context.get('gst_in_token') != value:
+            raise serializers.ValidationError("Enter valid GST Number")
+        if not VendorID.objects.filter(gst=value,business_email=self.email).exists():
+            raise serializers.ValidationError("Enter correct gst number with email id.")
+
+
+
+
+
+
+
     
 
         

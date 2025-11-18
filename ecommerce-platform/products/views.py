@@ -498,10 +498,7 @@ def delete_variant(request,product_id,variant_id):
     },status=status.HTTP_200_OK)
 
 
-<<<<<<< HEAD
-=======
 
->>>>>>> products
 @api_view(['GET'])
 @permission_classes([])
 def get_category_path(request):
@@ -519,9 +516,5 @@ def get_category_path(request):
             "category_path": cat.get_path()
         })
     
-<<<<<<< HEAD
-    return Response(data,status=status.HTTP_200_OK)
-=======
     return Response(data,status=status.HTTP_200_OK)
 
->>>>>>> products
