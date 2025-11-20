@@ -9,7 +9,7 @@ from .serializers import (LeafCategorySerializer,CategoryAttributeValueSerialize
                           AddProductSerializer,AddVariantSerializer,ProductUpdateSerializer,
                           VariantUpdateSerializer
                           )
-from .permissions import IsVendor
+from .permissions import IsVendor,CanAddProduct
 from .models import (Category,CategoryAttribute,Attribute,AttributeValue,
                      Product,ProductVariant,VariantAttribute,ProductVariantImage)
 from .tasks import delete_product_without_variants # time scheduling based deletion
@@ -67,7 +67,7 @@ def category_attribute(request, category_id):
 
 
 @api_view(['POST'])
-@permission_classes([IsVendor])
+@permission_classes([CanAddProduct])
 def add_product(request):
     serializer = AddProductSerializer(data=request.data)
     if serializer.is_valid():
@@ -107,7 +107,6 @@ def add_product(request):
 @api_view(['POST'])
 @permission_classes([IsVendor])
 @parser_classes([MultiPartParser,FormParser])
-
 def add_variants(request,product_id):
     data = request.data.copy()
     data['product_id'] = product_id

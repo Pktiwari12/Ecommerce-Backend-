@@ -150,6 +150,9 @@ class RegisterVendorSerializer(serializers.Serializer):
 
     def validate_phone(self,value):
         business_email = self.initial_data.get('business_email')
+        if self.context.get('phone_in_token') != value:
+            raise serializers.ValidationError("Invalid mobile number.") # 400 status code
+        
         if not VendorMobileOtp.objects.filter(phone=value,business_email=business_email,is_verified=True).exists():
             raise serializers.ValidationError("Mobile no. is not verified.")
         
@@ -244,28 +247,20 @@ class VendorDocumentSerializer(serializers.Serializer):
 
 
 class PickUpAddressSerializer(serializers.Serializer):
-    business_email = serializers.EmailField(required=True)
-    gst = serializers.CharField()
+    # business_email = serializers.EmailField(required=True)
+    # gst = serializers.CharField()
     address_line_1 = serializers.CharField(required=True) 
     address_line_2 = serializers.CharField()      
     city = serializers.CharField(required=True)
     state = serializers.CharField(required=True)
     pincode = serializers.CharField(required=True)
 
-    def validate_business_email(self,value):
-        try:
-            email = VendorEmailOtp.objects.get(business_email=value,is_verified=True)
-        except VendorEmailOtp.DoesNotExist:
-            raise serializers.ValidationError("Email does not exist.")
-        self.email = email
-        return email
-    
-    def validate_gst(self,value):
-        if self.context.get('gst_in_token') != value:
-            raise serializers.ValidationError("Enter valid GST Number")
-        if not VendorID.objects.filter(gst=value,business_email=self.email).exists():
-            raise serializers.ValidationError("Enter correct gst number with email id.")
-
+    def validate_pincode(self,value):
+        if not value.isdigit():
+            raise serializers.ValidationError("pincode must have numerice values only.")
+        
+        return value
+        
 
 
 

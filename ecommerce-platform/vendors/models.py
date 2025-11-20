@@ -121,3 +121,13 @@ class VendorID(models.Model):
     verified_by_admin = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
+
+class VendorOnboardingState(models.Model):
+    vendor = models.OneToOneField(Vendor,on_delete=models.CASCADE, related_name='state')
+    is_registered = models.BooleanField(default=False)
+    document_uploaded = models.BooleanField(default=False)
+    pickup_address = models.BooleanField(default=False)
+    product_variant = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.vendor.seller_name} onboarding state "

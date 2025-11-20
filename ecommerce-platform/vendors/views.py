@@ -222,8 +222,20 @@ def vendor_verify_mobile_otp(request):
 
 @api_view(['POST'])
 @permission_classes([])
+@authentication_classes([VendorStepAuthentication])
 def register_vendor(request):
-     serializer = RegisterVendorSerializer(data=request.data)
+     token = request.auth
+     if not token:
+          return Response({
+               "message": "Token is not provided"
+          },status=401)
+     
+     phone_in_token = token.get("field")
+     serializer = RegisterVendorSerializer(data=request.data, context={
+          "phone_in_token": phone_in_token
+     })
+
+     # serializer = RegisterVendorSerializer(data=request.data)
 
      if serializer.is_valid():
           business_email = serializer.validated_data.get('business_email')
@@ -287,12 +299,26 @@ def vendor_login(request):
                     "message": "Email does not exist."
                },status=404)
           
+
           vendor = authenticate(email=business_email,password=password)
 
           if not vendor:
                return Response({
                     "message": "Invalid Credential"
                },status=400)
+          
+          vendor_obj = getattr(vendor,'vendor',None)
+
+          if not vendor_obj: # This will raise if directly create user as a vendor
+               return Response({
+                    "message": "Vendor Class is not defined."
+               },status=500)
+          
+          if vendor_obj.status in ['REJECTED','SUSPENDED']:
+               return Response({
+                    "message": f"Vendor is {vendor_obj.status}"
+               },status = 400)
+          
           
           vendor.last_login = timezone.now()
           vendor.save()
@@ -305,8 +331,11 @@ def vendor_login(request):
                "access": str(refresh.access_token),
                "vendor": {
                     "id": vendor.id,
-                    "business_email": vendor.email,
-                    "onboarding_complete": vendor.vendor.is_completed
+                    "business_email": vendor_obj.business_email,
+                    "full_name":  vendor_obj.full_name,
+                    "seller_name": vendor_obj.seller_name,
+                    "status": vendor_obj.status,
+                    "onboarding_complete": vendor_obj.is_completed
                }
           },status=status.HTTP_200_OK)
      
@@ -415,16 +444,22 @@ def add_pickup_address(request):
      #      },status=400)
      
      # gst_in_token = token.get("field")
-     gst_in_token = "27ABCDE1234F2Z5"
-     serializer = PickUpAddressSerializer(data=request.data,context={
-          "gst_in_token": gst_in_token
-     })
-
+     # gst_in_token = "27ABCDE1234F2Z5"
+     # serializer = PickUpAddressSerializer(data=request.data,context={
+     #      "gst_in_token": gst_in_token
+     # })
+     serializer = PickUpAddressSerializer(data=request.data)
      if serializer.is_valid():
-          business_email = serializer.validated_data.get("business_email")
+          user = request.user
+          vendor_obj = getattr(user,"vendor",None)
+          if not vendor_obj:
+               return Response({
+                    "message": "Unable to set seller name and full name",
+               },status=500)
+          # business_email = serializer.validated_data.get("business_email")
           try:
                PickUpAddress.objects.update_or_create(
-                    business_email=business_email,
+                    vendor = vendor_obj,
                     defaults={
                          "address_line_1": serializer.validated_data.get('address_line_1'),
                          "address_line_2": serializer.validated_data.get('address_line_2'),
@@ -434,7 +469,7 @@ def add_pickup_address(request):
                     }
 
                )
-               token = create_vendor_step_token(business_email.business_email,5)
+               # token = create_vendor_step_token(business_email.business_email,5)
           except Exception as e:
                return Response({
                     "message": "Unable to proceed pickup addres.",
@@ -443,18 +478,16 @@ def add_pickup_address(request):
           
           return Response({
                "message": "Address is saved successfully.",
-               "token": token
+               # "token": token
           },status=status.HTTP_200_OK)
+     
+
      return Response({
           "message": "Invalid Data",
           "errors": serializer.errors,
      },status=status.HTTP_400_BAD_REQUEST)
 
-
-def set_name_password(request):
-     pass
-          
-          
+ 
 
 
 

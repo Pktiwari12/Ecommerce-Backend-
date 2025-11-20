@@ -24,6 +24,7 @@ def generate_sku(str,attribute_value):
             })
             
         except Exception as e:
+            # print("I am in exceptioon.")
             return None
     attribute_part = "-".join(f"{a['attribute_name'].lower()}-{a['attribute_value'].lower()}" for a in attr_list)
         
