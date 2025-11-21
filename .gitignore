@@ -4,4 +4,4 @@
 /ecommerce-platform/.env
 /ecommerce-platform/media/products/
 **/media
-ecommerce-platform/db.sqlite3
+*.sqlite3
