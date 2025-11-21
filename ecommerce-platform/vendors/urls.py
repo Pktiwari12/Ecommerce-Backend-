@@ -11,4 +11,5 @@ urlpatterns = [
       path('add/pickup-address/',views.add_pickup_address,name='add_pickup_address'),
       path('register/',views.register_vendor, name='register_vendor'),
       path('login/',views.vendor_login,name="vendor_login"),
+      path('onboarding/state/',views.vendor_onboarding_state, name='vendor_onboarding_state'),
 ]

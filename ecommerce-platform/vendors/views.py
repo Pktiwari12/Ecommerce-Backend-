@@ -19,7 +19,7 @@ from .authentication import VendorStepAuthentication
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken,TokenError
 from django.utils import timezone
-from .permissions import IsOnVerdingVendor
+from .permissions import IsOnVerdingVendor, IsVendor
 User = get_user_model()
 
 @api_view(['POST'])
@@ -319,7 +319,7 @@ def vendor_login(request):
                     "message": f"Vendor is {vendor_obj.status}"
                },status = 400)
           
-          
+
           vendor.last_login = timezone.now()
           vendor.save()
 
@@ -335,7 +335,7 @@ def vendor_login(request):
                     "full_name":  vendor_obj.full_name,
                     "seller_name": vendor_obj.seller_name,
                     "status": vendor_obj.status,
-                    "onboarding_complete": vendor_obj.is_completed
+                    "is_onboarding_complete": vendor_obj.is_completed
                }
           },status=status.HTTP_200_OK)
      
@@ -488,31 +488,33 @@ def add_pickup_address(request):
      },status=status.HTTP_400_BAD_REQUEST)
 
  
+@api_view(['GET'])
+@permission_classes([IsVendor])
+def vendor_onboarding_state(request):
+     vendor = request.user
 
+     vendor_obj = getattr(vendor,'vendor',None)
 
-
-
-
-
-# @api_view(['POST'])
-# @permission_classes([])
-# def register_vendor(request):
-#      serializer = PickUpAddressSerializer(data=request.data)
-#      if serializer.is_valid():
-#           try:
-#                pass
-            
-#           except Exception as e:
-#                return Response({
-#                     "message": "Unable to register at User level",
-#                     "errors": str(e)
-#                },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#           return Response({
-#                "message": "User is created."
-#           },status=status.HTTP_201_CREATED)
+     if not vendor_obj: # occured only simple vendor account is created through admin pannel
+          return Response({
+               "message": "Vendor class is not found."
+          },status=500)
      
-#      return Response({
-#           "message": "Invalid Data",
-#           "errors": serializer.errors,
-#      },status=status.HTTP_400_BAD_REQUEST)
+     onboarding_state = getattr(vendor_obj,'state', None)
+
+     if not onboarding_state: 
+          return Response({
+               "message": "Onboarding state is not found"
+          },status=500)
+     
+     
+     return Response({
+          "id": vendor.id,
+          "business_email": vendor_obj.business_email,
+          "is_registered": onboarding_state.is_registered,
+          "is_document_uploaded": onboarding_state.document_uploaded,
+          "is_pickup_address_uploaded": onboarding_state.pickup_address,
+          "is_initial_listing": onboarding_state.product_variant,
+          "is_onboarding_completed": vendor_obj.is_completed
+     },status=status.HTTP_200_OK)
+     
