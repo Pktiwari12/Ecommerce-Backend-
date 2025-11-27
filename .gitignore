@@ -1,7 +1,7 @@
 /ecommerce-platform/.venv
 **/__pycache__
 /account_Milestone.txt
-/ecommerce-platform/.env
 /ecommerce-platform/media/products/
+ecommerce-platform/.env
 **/media
 *.sqlite3
