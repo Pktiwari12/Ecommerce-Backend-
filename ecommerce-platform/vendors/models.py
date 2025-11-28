@@ -9,22 +9,22 @@ def signeture_image_upload_path(instance,filename):
 
     ext = filename.split('.')[-1]
     # print("I am in method")
-    seller_name = instance.vendor.seller_name
+    business_email = instance.vendor.business_email
     filename = f"{instance.alt_text_signeture}.{ext}"
     print("I am in end of method.")
     print(filename)
-    return f"venodrs/{seller_name}/{filename}"
+    return f"venodrs/{business_email}/{filename}"
 
 def gst_certificate_upload_path(instance,filename):
     # extention
 
     ext = filename.split('.')[-1]
     # print("I am in method")
-    seller_name = instance.vendor.seller_name
+    business_email = instance.vendor.business_email
     filename = f"{instance.alt_text_gst_certificate}.{ext}"
     print("I am in end of method.")
     print(filename)
-    return f"vendors/{seller_name}/{filename}"
+    return f"vendors/{business_email}/{filename}"
 
 
 # these are unnecessary if we will be use catche

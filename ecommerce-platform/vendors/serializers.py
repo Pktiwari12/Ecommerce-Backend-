@@ -197,8 +197,6 @@ class VendorLoginSerializer(serializers.Serializer):
 class VendorDocumentSerializer(serializers.Serializer):
     # business_email = serializers.EmailField(required=True)
     # phone = serializers.CharField(required=True)
-    full_name = serializers.CharField(required=True)
-    seller_name = serializers.CharField(required=True)
     gst = serializers.CharField(required=True)
     signeture = serializers.ImageField(required=True)
     gst_img = serializers.ImageField(required=True)
@@ -249,6 +247,8 @@ class VendorDocumentSerializer(serializers.Serializer):
 class PickUpAddressSerializer(serializers.Serializer):
     # business_email = serializers.EmailField(required=True)
     # gst = serializers.CharField()
+    full_name = serializers.CharField(required=True)
+    seller_name = serializers.CharField(required=True)
     address_line_1 = serializers.CharField(required=True) 
     address_line_2 = serializers.CharField()      
     city = serializers.CharField(required=True)

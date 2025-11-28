@@ -38,6 +38,12 @@ def generate_one_time_ever_product_name(title):
 
 
 def get_products(request,products):
+    # user = request.user
+    # print(user)
+    # access_not_active = False
+    # if user.role == 'vendor':
+    #     access_not_active = True
+
     # try:
     #     if(not for_all):
     #         # get only one product. ignore var name
@@ -63,7 +69,8 @@ def get_products(request,products):
     
     data = []
     for product in products:
-        category = list(product.category.all())[0]
+        # category = list(product.category.all())[0]
+        category = product.category.first()
         category_id = category.id
         print(category_id)
 
@@ -77,7 +84,7 @@ def get_products(request,products):
             "category_path": category.get_path(),
             "variants": []
         }
-        for variant in product.variants.filter(is_deleted=False):
+        for variant in product.product_variants:
             product_data["variants"].append({
                 "id": variant.id,
                 "name": variant.sku,
@@ -100,6 +107,8 @@ def get_products(request,products):
                     
                 ]
             })
+        if len(product_data.get("variants")) == 0:
+                continue
         data.append(product_data)
     return data
     

@@ -377,28 +377,35 @@ def upload_vendor_doc(request):
           # email = serializer.validated_data.get('business_email')
           # phone = serializer.validated_data.get('phone')
           user = request.user
-          full_name = serializer.validated_data.get('full_name')
-          seller_name = serializer.validated_data.get('seller_name')
+          # full_name = serializer.validated_data.get('full_name')
+          # seller_name = serializer.validated_data.get('seller_name')
           gst = serializer.validated_data.get('gst')
           signeture = serializer.validated_data.get('signeture')
           gst_img = serializer.validated_data.get('gst_img')
-          alt_text_signeture = f"{seller_name}-image"
+          alt_text_signeture = f"{user.email}-image"
           alt_text_gst_certificate = f"{gst}-image"
-          try:
-               vendor_obj = getattr(user,"vendor",None)
-               if not vendor_obj:
-                    return Response({
-                         "message": "Unable to set seller name and full name",
-                    },status=500)
-               
-               vendor_obj.full_name = full_name
-               vendor_obj.seller_name = seller_name
-               vendor_obj.save()
-          except Exception as e:
+
+          vendor_obj = getattr(user,"vendor",None)
+          if not vendor_obj:
                return Response({
-                    "message": "Unable to set fullname and seller name",
-                    "errors": str(e)
+                    "message": "Unable to set seller name and full name",
                },status=500)
+          # business_email = serializer.validated_data.get("business_email")
+          # try:
+          #      vendor_obj = getattr(user,"vendor",None)
+          #      if not vendor_obj:
+          #           return Response({
+          #                "message": "Unable to set seller name and full name",
+          #           },status=500)
+               
+          #      vendor_obj.full_name = full_name
+          #      vendor_obj.seller_name = seller_name
+          #      vendor_obj.save()
+          # except Exception as e:
+          #      return Response({
+          #           "message": "Unable to set fullname and seller name",
+          #           "errors": str(e)
+          #      },status=500)
 
           try:
                VendorID.objects.update_or_create(
@@ -451,12 +458,25 @@ def add_pickup_address(request):
      serializer = PickUpAddressSerializer(data=request.data)
      if serializer.is_valid():
           user = request.user
-          vendor_obj = getattr(user,"vendor",None)
-          if not vendor_obj:
+          full_name = serializer.validated_data.get('full_name')
+          seller_name = serializer.validated_data.get('seller_name')
+          
+          try:
+               vendor_obj = getattr(user,"vendor",None)
+               if not vendor_obj:
+                    return Response({
+                         "message": "Unable to set seller name and full name",
+                    },status=500)
+               
+               vendor_obj.full_name = full_name
+               vendor_obj.seller_name = seller_name
+               vendor_obj.save()
+          except Exception as e:
                return Response({
-                    "message": "Unable to set seller name and full name",
+                    "message": "Unable to set fullname and seller name",
+                    "errors": str(e)
                },status=500)
-          # business_email = serializer.validated_data.get("business_email")
+
           try:
                PickUpAddress.objects.update_or_create(
                     vendor = vendor_obj,

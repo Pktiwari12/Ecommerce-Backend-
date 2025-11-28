@@ -1,7 +1,8 @@
-from django.shortcuts import render
+# from django.shortcuts import render
 from rest_framework.decorators import api_view,permission_classes,parser_classes
 from rest_framework import status
 from rest_framework.response import Response
+from django.db.models import Prefetch
 from .utils import (find_leaf_nodes,generate_sku,get_products,
                     generate_one_time_ever_product_name,generate_title_for_deleted_product,
                     generate_sku_for_deleted_variants)
@@ -95,7 +96,8 @@ def add_product(request):
             "id": product.id,
             "title": product.title,
             "status": product.status,
-            "category": category.name
+            "category": category.name,
+            "category_id": category.id
         },status=status.HTTP_201_CREATED)
     
     return Response({
@@ -196,11 +198,25 @@ def add_variants(request,product_id):
 @permission_classes([])
 def get_product(request,product_id):
     try:
+        # product = Product.objects.prefetch_related(
+        #         "variants__attributes__attribute",
+        #         "variants__attributes__value",
+        #         "variants__images"
+        #     ).filter(id=product_id,is_deleted=False)
         product = Product.objects.prefetch_related(
-                "variants__attributes__attribute",
-                "variants__attributes__value",
-                "variants__images"
-            ).filter(id=product_id,is_deleted=False)
+            Prefetch(
+                "variants",
+                queryset=ProductVariant.objects.filter(
+                    is_active=True,
+                    is_deleted=False
+                ).prefetch_related(
+                    "attributes__attribute",
+                    "attributes__value",
+                    "images"
+                ),
+                to_attr="product_variants"
+            )
+        ).filter(id=product_id,status='active', is_deleted=False)
     except Exception as e:
         return Response({
             "message": "Unable to find variants of products"
@@ -220,8 +236,8 @@ def get_product(request,product_id):
 
     if len(data )== 0:
         return Response({
-            "message": "Unable to find product details."
-        },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            "message": "Product is not found."
+        },status=status.HTTP_404_NOT_FOUND)
     
     return Response(data,status=status.HTTP_200_OK)
 
@@ -229,11 +245,27 @@ def get_product(request,product_id):
 @permission_classes([])
 def get_all_products(request):
     try:
+        # products = Product.objects.prefetch_related(
+        #         "variants__attributes__attribute",
+        #         "variants__attributes__value",
+        #         "variants__images"
+        #     ).filter(status='active',is_deleted=False)
+        
         products = Product.objects.prefetch_related(
-                "variants__attributes__attribute",
-                "variants__attributes__value",
-                "variants__images"
-            ).filter(status='active',is_deleted=False)
+            Prefetch(
+                "variants",
+                queryset=ProductVariant.objects.filter(
+                    is_active=True,
+                    is_deleted=False
+                ).prefetch_related(
+                    "attributes__attribute",
+                    "attributes__value",
+                    "images"
+                ),
+                to_attr="product_variants"
+            )
+        ).filter(status='active', is_deleted=False)
+
     except Product.DoesNotExist:
         return Response({
             "message": "Unable to load Products."
@@ -242,6 +274,7 @@ def get_all_products(request):
         return Response({
             "message": "Unable to find variants of products"
         },status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     data = get_products(request,products)
 
     if len(data )== 0:
@@ -257,11 +290,25 @@ def get_all_products(request):
 def vendor_get_product(request,product_id):
     print("I am in sisngl")
     try:
+        # product = Product.objects.prefetch_related(
+        #         "variants__attributes__attribute",
+        #         "variants__attributes__value",
+        #         "variants__images"
+        #     ).filter(id=product_id,vendor=request.user,is_deleted=False)
+        
         product = Product.objects.prefetch_related(
-                "variants__attributes__attribute",
-                "variants__attributes__value",
-                "variants__images"
-            ).filter(id=product_id,vendor=request.user,is_deleted=False)
+            Prefetch(
+                "variants",
+                queryset=ProductVariant.objects.filter(
+                    is_deleted=False
+                ).prefetch_related(
+                    "attributes__attribute",
+                    "attributes__value",
+                    "images"
+                ),
+                to_attr="product_variants"
+            )
+        ).filter(id=product_id,vendor=request.user, is_deleted=False)
     except Exception as e:
         return Response({
             "message": "Unable to find variants of products"
@@ -292,11 +339,26 @@ def vendor_get_product(request,product_id):
 def vendor_get_all_products(request):
     print("I am hre")
     try:
+        # products = Product.objects.prefetch_related(
+        #         "variants__attributes__attribute",
+        #         "variants__attributes__value",
+        #         "variants__images"
+        #     ).filter(vendor=request.user,is_deleted=False)
+        
         products = Product.objects.prefetch_related(
-                "variants__attributes__attribute",
-                "variants__attributes__value",
-                "variants__images"
-            ).filter(vendor=request.user,is_deleted=False)
+            Prefetch(
+                "variants",
+                queryset=ProductVariant.objects.filter(
+                    is_deleted=False
+                ).prefetch_related(
+                    "attributes__attribute",
+                    "attributes__value",
+                    "images"
+                ),
+                to_attr="product_variants"
+            )
+        ).filter(vendor=request.user, is_deleted=False)
+
     except Exception as e:
         print("Error: ",e)
         return Response({

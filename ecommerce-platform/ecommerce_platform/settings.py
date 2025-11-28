@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
+import razorpay
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +29,12 @@ SECRET_KEY = 'django-insecure--m^f(xh6^%bcifpf%@5zp5mtv8x7+9k+z+fmc$^b6z(rr2zth)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
+# congigure ngrok 
+ALLOWED_HOSTS = ["127.0.0.1","localhost","likeable-dena-testy.ngrok-free.dev"]
+CSRF_TRUSTED_ORIGINS = [
+    'https://likeable-dena-testy.ngrok-free.dev',
+]
 
 
 # Application definition
@@ -47,6 +53,7 @@ INSTALLED_APPS = [
     'accounts',
     'vendors',
     'products',
+    'orders',
 
     #third party apps
     'corsheaders',
@@ -187,3 +194,11 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Kolkata"
+
+
+# Razorpay keys
+KEY_ID = os.getenv('KEY_ID')
+KEY_SECRET = os.getenv('KEY_SECRET')
+WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET')
+RAZORPAY_CLIENT = razorpay.Client(auth=(KEY_ID,KEY_SECRET))
+RAZORPAY_CLIENT.enable_retry(True)

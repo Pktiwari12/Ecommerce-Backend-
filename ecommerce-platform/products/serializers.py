@@ -102,7 +102,7 @@ class AddVariantSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Each item must be a dictionary")
             if 'attribute_id' not in item or 'value_id' not in item:
                 raise serializers.ValidationError("attribute_id and value_id are required")
-            return value
+            # return value
         if not value:
             raise serializers.ValidationError("Attributes are required.")
         
