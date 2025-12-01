@@ -11,6 +11,7 @@ urlpatterns = [
     path("get/<str:order_number>/",views.customer_get_specific_order,name='customer_get_specific order.'), # ignore
     path("vendor-get-all/",views.vendor_get_orders,name='customer_get_specific order.'),
     path("vendor-get/<order_item_id>/",views.vendor_get_specific_order,name='customer_get_specific order.'), # ignore
+    path("guest-user-get-order/",views.guest_customer_get_orders,name='guest_user_get_order'),
     
     
     

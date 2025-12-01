@@ -42,8 +42,8 @@ class Order(models.Model):
     ]
     id = models.BigAutoField(primary_key=True)
     order_number = models.CharField(max_length=64, unique=True, db_index=True,default=generate_order_number)
-    customer = models.ForeignKey(User,on_delete=models.PROTECT,related_name='orders')
-
+    customer = models.ForeignKey(User,on_delete=models.PROTECT,related_name='orders',null=True)
+    guest_email = models.EmailField(blank=True,null=True)
     #shipping snapshot
     shipping_name = models.CharField(max_length=200)
     shipping_phone= models.CharField(max_length=12)
@@ -83,7 +83,8 @@ class Order(models.Model):
         ]
 
     def __str__(self):
-        return f"Order {self.order_number} ({self.customer.email})"
+        user_label = self.customer.email if self.customer else f"Guest User - {self.guest_email}"
+        return f"Order {self.order_number} ({user_label})"
     
     def compute_totals(self,tax=0.00,shipping_charge=0.00,discount=0.00):
         # computing total
@@ -101,7 +102,7 @@ class Order(models.Model):
     
     @classmethod
     def create_order(cls, customer, items, shipping_snapshot: dict, payment_method=None, payment_reference=None,status="PROCESSING",
-                     payment_status="PAYMENT_PENDING"):
+                     payment_status="PAYMENT_PENDING",guest_email=None):
         # items must be list of dicts
         # shipping address must be dict
         if not items:
@@ -113,6 +114,7 @@ class Order(models.Model):
         with transaction.atomic():
             order = cls.objects.create(
                 customer=customer,
+                guest_email=guest_email,
                 shipping_name=shipping_snapshot.get('shipping_name'),
                 shipping_phone=shipping_snapshot.get('shipping_phone'),
                 shipping_email = shipping_snapshot.get('shipping_email'),
@@ -307,9 +309,9 @@ class CheckoutSession(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
-    customer = models.ForeignKey(User,on_delete=models.CASCADE, related_name="checkout_sessions")
+    customer = models.ForeignKey(User,on_delete=models.CASCADE, related_name="checkout_sessions",null=True)
     payload = models.JSONField() #store items, shipping_snapshot, metadata
-
+    guest_email = models.EmailField(blank=True,null=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2,default=Decimal("0.00"))
     currency = models.CharField(max_length=10, default="INR")
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default='PENDING')
@@ -324,7 +326,8 @@ class CheckoutSession(models.Model):
         self.status = "PAYMENT_INITIATED"
         self.save(update_fields=["payment_gateway_order_id","status"])
     def __str__(self):
-        return f"{self.customer.email} checkout {self.status}"
+        user_label = self.customer.email if self.customer else "Guest User"
+        return f"{user_label} checkout {self.status}"
 
 
 

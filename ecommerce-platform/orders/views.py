@@ -12,7 +12,7 @@ from .models import CheckoutSession,Order,OrderItem
 from django.conf import settings
 from decimal import Decimal
 from .permissions import IsApprovedVendor
-
+from django.core.mail import send_mail
 import hmac
 import hashlib
 import json
@@ -76,9 +76,16 @@ def validate_items(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
+@permission_classes([])
 def validate_checkout(request):
-    serializer = CheckoutValidateSerializer(data=request.data)
+    customer = None
+    if request.user.is_authenticated:
+        customer = request.user
+    
+    serializer = CheckoutValidateSerializer(data=request.data,context={
+        "customer": customer
+    })
     # To pass 
     items_level_total_payment = {
         "total": Decimal("0.00"),
@@ -86,6 +93,16 @@ def validate_checkout(request):
     }
 
     if serializer.is_valid():
+        if not (customer or serializer.validated_data.get('shipping_email')):
+            return Response({
+                "message": "shiiping email is mendatory for guest user."
+            },status=400)
+        
+        guest_email=None
+        if not customer:
+            guest_email = serializer.validated_data.get('shipping_email')
+        # print(request.user)
+        # print(guest_email)
         items_with_qty = serializer.validated_data.get('items_with_qty')
 
         for iwq in items_with_qty:
@@ -120,8 +137,12 @@ def validate_checkout(request):
                 qty=qty, 
             )
         try:
+            # print("I am in try")
+            # print(guest_email)
             session = CheckoutSession.objects.create(
-                customer=request.user,
+                # customer=request.user,
+                customer=customer,
+                guest_email=guest_email,
                 payload={
                     "items": items_with_qty,
                     "shipping": {
@@ -147,10 +168,29 @@ def validate_checkout(request):
             },status=500)
 
         # Order can be proceeded further
+        message = ""
+        if not customer:
+            message = "Please check your mail , then make payemnt"
+            try:
+                print("Email id is called.")
+                send_mail(
+                    subject="Checkout id for issue related to payment.",                    
+                    message=f"checkout id:  {session.id}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[session.guest_email],
+                    fail_silently=False
+                )
+            except Exception as e:
+               return Response({
+                    "message": "Unable to send email"
+                },status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
         return Response({
             "checkout_session_id": str(session.id),
             "ammount": items_level_total_payment.get('total'),
             "currency": "INR",
+            "message": message,
             "expiry_time": "15 min"
         },status=status.HTTP_200_OK)
 
@@ -165,14 +205,21 @@ def validate_checkout(request):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
+@permission_classes([])
 def initiate_payment(request):
+
+    customer = None
+    if request.user.is_authenticated:
+        customer = request.user
+    
+
     serializer = InitiatePaymentSerializer(data=request.data)
     
     if serializer.is_valid():
         session_id = serializer.validated_data.get('checkout_session_id')
         try:
-            session = CheckoutSession.objects.get(pk=session_id,customer=request.user)
+            session = CheckoutSession.objects.get(pk=session_id,customer=customer)
         except CheckoutSession.DoesNotExist:
             return Response({
                 "message": "Session not found.",
@@ -301,6 +348,7 @@ def razorpay_webhook(request):
     if event_type in ["payment.captured", "payment.authorized"]:
         payload_data = session.payload
         customer = session.customer
+        guest_email = session.guest_email # if guest user otherwise null
         items = payload_data.get('items')
         print(items)
         shipping = payload_data['shipping']
@@ -314,7 +362,8 @@ def razorpay_webhook(request):
                 payment_method=payment_method,
                 payment_reference=session.payment_gateway_order_id,
                 status="CONFIRMED",
-                payment_status="PAYMENT_PAID"
+                payment_status="PAYMENT_PAID",
+                guest_email=guest_email,
             )
 
         except Exception as e:
@@ -327,10 +376,24 @@ def razorpay_webhook(request):
         
         session.status = "PAID"
         session.save(update_fields=["status"])
-
-
+        msg = ""
+        if not customer:
+            msg="Please check your mail."
+            try:
+                send_mail(
+                    subject="Order no. to track your item",                    
+                    message=f"order number:  {order.order_number}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[session.guest_email],
+                    fail_silently=False
+                )
+            except Exception as e:
+               return Response({
+                    "message": "Unable to send email"
+                },status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
         return Response({
-            "message": "Order is created successfully.",
+            "message": f"Order is created successfully.{msg}",
             "order_number": order.order_number
         },status=201)
     
@@ -472,6 +535,8 @@ def vendor_get_orders(request):
     },status=200)
 
 
+
+# I have mearged followin api in above. but this is wrong so we will handle in future.
 @api_view(['GET'])
 @permission_classes([IsApprovedVendor])
 def vendor_get_specific_order(request,order_item_id):
@@ -484,3 +549,41 @@ def vendor_get_specific_order(request,order_item_id):
 
 
 
+@api_view(['GET'])
+@permission_classes([])
+def guest_customer_get_orders(request):
+    # orders = Order.objects.prefetch_related()
+    order_number = request.GET.get('order_number')
+    if not order_number:
+        return Response({
+            "message": "Order no. is not provided."
+        },status=400)
+    
+    try:
+        queryset = (
+            Order.objects.filter(order_number=order_number,customer=None)
+            .prefetch_related(
+                "items",
+                "items__product_variant",
+                "items__product_variant__product",
+                "items__product_variant__images"
+            )
+        )
+    except Exception as e:
+        return Response({
+            "message": "Unable to find Order"
+        },status=500)
+    
+    if not queryset.exists():
+        return Response({
+            "message": "Order no. is not found."
+        },status=400)
+    
+    # queryset = Order.objects.filter(customer=request.user).order_by("-created_at")
+    serializer = CustomerOrderListSerializer(queryset,many=True,context={
+        "request": request
+    })
+    return Response({
+        "message": "Orders fetched successfully.",
+        "orders": serializer.data
+    },status=200)

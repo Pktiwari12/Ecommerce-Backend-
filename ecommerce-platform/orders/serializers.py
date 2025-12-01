@@ -63,6 +63,13 @@ class CheckoutValidateSerializer(serializers.Serializer):
         if value not in self.payment_choices:
             raise serializers.ValidationError("Select only one option in (1.Cash_On_Delivery, 2.Online_Mode)")
         return value
+    
+    # def validate_shipping_email(self,value):
+    #     if not ( self.context.get('customer') or value) :
+    #         raise serializers.ValidationError("Guest User must have provide email.")
+        
+    #     return value
+
         
 
 class InitiatePaymentSerializer(serializers.Serializer):
@@ -120,7 +127,7 @@ class CustomerOrderListSerializer(serializers.Serializer):
             "address_2": obj.shipping_address_2,
             "city": obj.shipping_city,
             "state": obj.shipping_state,
-            "pincode": obj.shipping_pi
+            "pincode": obj.shipping_pincode
         }
     def get_items(self,obj):
         return CustomerOrderItemSerializer(obj.items.all(),many=True,context=self.context).data
