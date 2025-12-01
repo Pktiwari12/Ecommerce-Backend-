@@ -33,7 +33,7 @@ DEBUG = True
 # congigure ngrok 
 ALLOWED_HOSTS = ["127.0.0.1","localhost","likeable-dena-testy.ngrok-free.dev"]
 CSRF_TRUSTED_ORIGINS = [
-    'https://likeable-dena-testy.ngrok-free.dev',
+    "https://likeable-dena-testy.ngrok-free.dev",
 ]
 
 

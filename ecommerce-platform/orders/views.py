@@ -6,11 +6,12 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .serializers import (ValidateItemSerializer,CheckoutValidateSerializer,InitiatePaymentSerializer,
-                          CreateCodSerializer)
+                          CreateCodSerializer,CustomerOrderListSerializer,VendorOrderListSerializer)
 from products.models import ProductVariant
 from .models import CheckoutSession,Order,OrderItem
 from django.conf import settings
 from decimal import Decimal
+from .permissions import IsApprovedVendor
 
 import hmac
 import hashlib
@@ -402,51 +403,84 @@ def create_order_cod(request):
 
 
 
-
-
-
-
-
-
-
-
-
-# @api_view(['POST'])
-# @permission_classes([])
-# def create_order(request):
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def customer_get_orders(request):
+    # orders = Order.objects.prefetch_related()
+    queryset = (
+        Order.objects.filter(customer=request.user)
+        .order_by('-created_at')
+        .prefetch_related(
+            "items",
+            "items__product_variant",
+            "items__product_variant__product",
+            "items__product_variant__images"
+        )
+    )
     
-#     serializer = CreateOrderSerializer(data=request.data)
-#     if serializer.is_valid():
-#         # checkout 
-#         data = {
-#                 "amount": 1*100,
-#                 "currency": "INR",
-#                 "receipt": "Test Receipt 1",
-#                 "partial_payment":False,
-#                 "notes": {
-#                             "name": "User",
-#                             "platform": "website"
-#                     }
-#                 }
-#         client = settings.RAZORPAY_CLIENT
-#         key_id = settings.KEY_ID
-#         key_secret = settings.KEY_SECRET
-#         order = client.order.create(data)
-#         print(order)
-#         print(settings.KEY_ID)
-#         return Response({
-#             "order_id": order.get('id'),
-#             "message": "Items is ordered succesfully."
-#         },status=200)
-    
-#     return Response({
-#         "message": "Invalid Data",
-#         "errors": serializer.errors
-#     },status=status.HTTP_400_BAD_REQUEST)
+    # queryset = Order.objects.filter(customer=request.user).order_by("-created_at")
+    serializer = CustomerOrderListSerializer(queryset,many=True,context={
+        "request": request
+    })
+    return Response({
+        "message": "Orders fetched successfully.",
+        "orders": serializer.data
+    },status=200)
 
 
+# I have mearged followin api in above. but this is wrong so we will handle in future.
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def customer_get_specific_order(request,order_number):
+    return Response({
+        "messsage": "Specific order is found.",
+        "Isimplemented": False
+    },status=200)
 
 
-    
+@api_view(['GET'])
+@permission_classes([IsApprovedVendor])
+def vendor_get_orders(request):
+    vendor = request.user.vendor
+    status = request.GET.get('status')
+    if status:
+        queryset = (
+            OrderItem.objects.filter(vendor=vendor,status=status)
+            .select_related(
+                "order",
+                "product_variant",
+                "product_variant__product"
+            ).prefetch_related("product_variant__images").order_by("-created_at")
+        )
+    else:
+        queryset = (
+            OrderItem.objects.filter(vendor=vendor)
+            .select_related(
+                "order",
+                "product_variant",
+                "product_variant__product"
+            ).prefetch_related("product_variant__images").order_by("-created_at")
+        )
+
+
+    serializer = VendorOrderListSerializer(queryset,many=True,context={
+        "request": request
+    })
+    return Response({
+        "message": "Orders fetched successfully.",
+        "orders": serializer.data
+    },status=200)
+
+
+@api_view(['GET'])
+@permission_classes([IsApprovedVendor])
+def vendor_get_specific_order(request,order_item_id):
+    return Response({
+        "message": "Your active order is found.",
+        "Isimplemented": False
+
+    })
+
+
 
 
