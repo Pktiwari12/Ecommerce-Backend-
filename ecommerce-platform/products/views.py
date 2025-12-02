@@ -397,7 +397,8 @@ def update_product(request,product_id):
 
     if serializer.is_valid():
         try:
-            product.status=serializer.validated_data['status']
+            if product.is_verified:
+                product.status=serializer.validated_data['status']
             product.title=serializer.validated_data['title']
             print(serializer.validated_data['title'])
             print(serializer.validated_data['description'])
@@ -469,7 +470,8 @@ def update_variant(request,product_id,variant_id):
     if serializer.is_valid():
         variant.adjusted_price = serializer.validated_data.get('adjusted_price')
         variant.stock = serializer.validated_data.get('stock')
-        variant.is_active = serializer.validated_data.get('is_active')
+        if variant.product.is_verified:
+            variant.is_active = serializer.validated_data.get('is_active')
 
         if not serializer.validated_data.get('primary_image_id'):
             try:

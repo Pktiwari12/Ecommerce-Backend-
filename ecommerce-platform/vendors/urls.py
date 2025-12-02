@@ -12,4 +12,5 @@ urlpatterns = [
       path('register/',views.register_vendor, name='register_vendor'),
       path('login/',views.vendor_login,name="vendor_login"),
       path('onboarding/state/',views.vendor_onboarding_state, name='vendor_onboarding_state'),
+      path('get-profile/',views.get_profile,name='get_profile'),
 ]

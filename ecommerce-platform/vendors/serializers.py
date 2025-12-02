@@ -182,18 +182,6 @@ class VendorLoginSerializer(serializers.Serializer):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 class VendorDocumentSerializer(serializers.Serializer):
     # business_email = serializers.EmailField(required=True)
     # phone = serializers.CharField(required=True)
@@ -264,8 +252,7 @@ class PickUpAddressSerializer(serializers.Serializer):
 
 
 
-
-
+    
 
     
 

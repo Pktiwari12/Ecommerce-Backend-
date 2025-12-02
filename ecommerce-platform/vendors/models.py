@@ -131,3 +131,22 @@ class VendorOnboardingState(models.Model):
 
     def __str__(self):
         return f"{self.vendor.seller_name} onboarding state "
+    
+
+
+class VendorStats(models.Model):
+    vendor = models.OneToOneField(Vendor,on_delete=models.CASCADE,related_name="stats")
+    active_products = models.PositiveIntegerField(default=0)
+    not_verified_products = models.PositiveIntegerField(default=0)
+    inactive_products = models.PositiveIntegerField(default=0)
+
+    total_order_items = models.PositiveIntegerField(default=0)
+    total_delivered_items = models.PositiveIntegerField(default=0)
+    total_cancelled_items = models.PositiveIntegerField(default=0)
+
+    total_earning = models.DecimalField(max_digits=12,decimal_places=2,default=0.00)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.vendor.business_email} products and orders statistics."
+

@@ -150,6 +150,7 @@ class ProductUpdateSerializer(serializers.Serializer):
     status = serializers.CharField(required=True)
 
     def validate_status(self,value):
+        value = value.lower()
         if not value in ['active', 'inactive']:
             raise serializers.ValidationError("value must be active or inactve.")
         

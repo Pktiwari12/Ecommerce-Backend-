@@ -12,7 +12,8 @@ from .serializers import (VendorRegisterOTPSerializer,VendorVerifyOTPSerializer,
                           VendorRegisterMobileOtpSerializer,VerifyMobileOTPSerializer,
                           VendorDocumentSerializer,PickUpAddressSerializer,
                           RegisterVendorSerializer,VendorLoginSerializer)
-from .models import (Vendor,VendorEmailOtp,VendorMobileOtp,VendorID,PickUpAddress)
+from .models import (Vendor,VendorEmailOtp,VendorMobileOtp,VendorID,PickUpAddress,
+                     VendorStats,)
 from ecommerce_platform.utils import generate_otp
 from .utils.on_board_token import create_vendor_step_token,verify_vendor_step_token
 from .authentication import VendorStepAuthentication
@@ -538,3 +539,48 @@ def vendor_onboarding_state(request):
           "is_onboarding_completed": vendor_obj.is_completed
      },status=status.HTTP_200_OK)
      
+
+@api_view(['GET'])
+@permission_classes([IsVendor])
+def get_profile(request):
+     vendor = request.user.vendor
+     pickup_address = vendor.address 
+     document_and_verifcation = vendor.gst_docs
+     stats = vendor.stats
+     payload = {
+          "status": vendor.status,
+          "stats": {
+               "active_products": stats.active_products,
+               "inactive_products": stats.inactive_products,
+               "not_verified_products": stats.not_verified_products,
+               "total_order_items": stats.total_order_items,
+               "total_earning": stats.total_earning
+          },
+          "personal_info": {
+               "full_name": vendor.full_name,
+               "seller_name": vendor.seller_name,
+               "business_email": vendor.business_email,
+               "phone": vendor.phone,
+               "gst": document_and_verifcation.gst
+          },
+          "pickup_address": {
+               "address_line_1": pickup_address.address_line_1,
+               "address_line_2": pickup_address.address_line_2,
+               "city": pickup_address.city,
+               "state": pickup_address.state,
+               "pincode": pickup_address.pincode,
+               # "is_primary": pickup_address.is_primary
+          },
+          "gst_docs": {
+               "gst_certificate": request.build_absolute_uri(document_and_verifcation.gst_certificate.url),
+               "alt_text_gst": document_and_verifcation.alt_text_gst_certificate,
+               "signature": request.build_absolute_uri(document_and_verifcation.signeture.url),
+               "alt_text_signature": document_and_verifcation.alt_text_signeture,
+               "is_verified": document_and_verifcation.verified_by_admin
+          },
+          "member_year": vendor.created_at.year
+     }
+     return Response(payload,status=200)
+
+
+
