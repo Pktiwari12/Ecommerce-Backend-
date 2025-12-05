@@ -261,7 +261,7 @@ class OrderItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.product_variant.sku} x {self.quantity} ({self.order.order_number})"
+        return f"{self.product_variant.sku} x {self.quantity} ( {self.order.order_number})"
     
     # override the parent class mehtod
     def save(self, *args, **kwargs):

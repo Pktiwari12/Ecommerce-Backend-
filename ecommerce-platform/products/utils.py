@@ -73,7 +73,6 @@ def get_products(request,products):
         category = product.category.first()
         category_id = category.id
         print(category_id)
-
         product_data = {
             "id": product.id,
             "title": product.title,
@@ -82,7 +81,8 @@ def get_products(request,products):
             "status": product.status,
             "category_id": category_id,
             "category_path": category.get_path(),
-            "variants": []
+            "variants": [],
+            "created_at": product.created_at
         }
         for variant in product.product_variants:
             product_data["variants"].append({

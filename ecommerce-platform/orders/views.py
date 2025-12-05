@@ -507,22 +507,46 @@ def vendor_get_orders(request):
     vendor = request.user.vendor
     status = request.GET.get('status')
     if status:
+        # queryset = (
+        #     OrderItem.objects.filter(vendor=vendor,status=status)
+        #     .select_related(
+        #         "order",
+        #         "product_variant",
+        #         "product_variant__product"
+        #     ).prefetch_related("product_variant__images").order_by("-created_at")
+        # )
         queryset = (
-            OrderItem.objects.filter(vendor=vendor,status=status)
-            .select_related(
-                "order",
-                "product_variant",
-                "product_variant__product"
-            ).prefetch_related("product_variant__images").order_by("-created_at")
+            Order.objects.filter(items__vendor=vendor)
+            .select_related("customer")
+            .prefetch_related(
+                "items",
+                "items__product_variant",
+                "items__product_variant__product",
+                "items__product_variant__images",
+            )
+            .distinct()
+            .order_by("-created_at")
         )
     else:
+        # queryset = (
+        #     OrderItem.objects.filter(vendor=vendor)
+        #     .select_related(
+        #         "order",
+        #         "product_variant",
+        #         "product_variant__product"
+        #     ).prefetch_related("product_variant__images").order_by("-created_at")
+        # )
         queryset = (
-            OrderItem.objects.filter(vendor=vendor)
-            .select_related(
-                "order",
-                "product_variant",
-                "product_variant__product"
-            ).prefetch_related("product_variant__images").order_by("-created_at")
+            Order.objects.filter(items__vendor=vendor)
+            .select_related("customer")
+            .prefetch_related(
+                "items",
+                "items__product_variant",
+                "items__product_variant__product",
+                "items__product_variant__images",
+            )
+            .distinct()
+            .order_by("-created_at")
         )
 
 

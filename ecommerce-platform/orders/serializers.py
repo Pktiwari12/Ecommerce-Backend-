@@ -85,6 +85,8 @@ class CustomerOrderItemSerializer(serializers.Serializer):
     product_variant_id = serializers.IntegerField(source="product_variant.id")
     product_id = serializers.IntegerField(source="product_variant.product.id")
     quantity = serializers.IntegerField()
+    product_name = serializers.CharField(source="product_variant.product.title")
+    sku = serializers.CharField(source="product_variant.sku")
     price = serializers.DecimalField(max_digits=12,decimal_places=2)
     subtotal = serializers.DecimalField(max_digits=12,decimal_places=2)
     status = serializers.CharField()
@@ -134,7 +136,7 @@ class CustomerOrderListSerializer(serializers.Serializer):
     
 
 class VendorOrderItemSerializer(serializers.Serializer):
-    item_id = serializers.IntegerField(source="id")
+    order_item_id = serializers.IntegerField(source="id")
     product_variant_id = serializers.IntegerField(source="product_variant.id")
     product_id = serializers.IntegerField(source="product_variant.product.id")
     product_name = serializers.CharField(source="product_variant.product.title")
@@ -172,18 +174,19 @@ class VendorOrderItemSerializer(serializers.Serializer):
 
 
 class VendorOrderListSerializer(serializers.Serializer):
-    order_number = serializers.CharField(source="order.order_number")
-    payment_method = serializers.CharField(source="order.payment_method")
-    payment_status = serializers.CharField(source="order.payment_status")
-    total = serializers.DecimalField(source="order.total", max_digits=12, decimal_places=2)
-    created_at = serializers.DateTimeField(source="order.created_at")
-    updated_at = serializers.DateField(source="order.updated_at")
+    # order_number = serializers.CharField(source="order.order_number")
+    order_number = serializers.CharField()
+    payment_method = serializers.CharField()
+    payment_status = serializers.CharField()
+    total = serializers.DecimalField( max_digits=12, decimal_places=2)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateField()
     
     shipping = serializers.SerializerMethodField()
     items = serializers.SerializerMethodField()
     
     def get_shipping(self, obj):
-        order = obj.order
+        order = obj
         return {
             "name": order.shipping_name,
             "phone": order.shipping_phone,
@@ -197,7 +200,8 @@ class VendorOrderListSerializer(serializers.Serializer):
     
     def get_items(self, obj):
         # obj is an OrderItem instance, filter all items of this vendor for the same order
-        order_items = obj.order.items.filter(vendor=obj.vendor)
+        # order_items = obj.order.items.filter(vendor=obj.vendor)
+        order_items = obj.items.all()
         return VendorOrderItemSerializer(order_items, many=True, context=self.context).data
 
     

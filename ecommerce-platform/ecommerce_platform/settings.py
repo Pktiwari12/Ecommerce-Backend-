@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'vendors',
     'products',
     'orders',
+    'cart',
 
     #third party apps
     'corsheaders',
