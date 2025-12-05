@@ -1,3 +1,5 @@
+first fork and clone this repo
+
 1. first create a virtual environment
 2. navigate to ecommerce-platform
 3. run python -m pip install -r  requirements.txt
